@@ -12,6 +12,8 @@ torch-geometric = "*"
 fast-pytorch-kmeans = "*"
 sentence-transformers = "*"
 datasets = "*"
+apache_beam = "*"
+mwparserfromhell = "*"
 
 
 [build-system]
