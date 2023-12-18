@@ -5,7 +5,7 @@ from .sparse_mha import SparseMultiHeadAttention
 class SparseEncoder(nn.Module):
 
     def __init__(self, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float):
-        super().__init__()
+        super(SparseEncoder, self).__init__()
 
         self.attn = SparseMultiHeadAttention(n_head, n_active, d_model, d_attn)
         
@@ -26,4 +26,15 @@ class SparseEncoder(nn.Module):
         out = self.ln2(y + self.dropout(ff_out))
         return out
 
+class SparseEncoderLayers(nn.Module):
+
+    def __init__(self, n_layers, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float = 0.1):
+        super(SparseEncoderLayers, self).__init__()
+
+        self.layers = nn.Sequential(
+            *[SparseEncoder(d_model, n_head, n_active, d_attn, d_ff, dropout) for _ in range(n_layers)]
+        )
+
+    def forward(self, input: Tensor) -> Tensor:
+        return self.layers(input)
 

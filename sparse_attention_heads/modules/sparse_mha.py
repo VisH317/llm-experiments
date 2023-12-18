@@ -5,7 +5,7 @@ from torch import nn, Tensor, functional as F
 class AttentionHead(nn.Module):
 
     def __init__(self, d_model: int, att_dim: int):
-        super().__init__()
+        super(AttentionHead, self).__init__()
 
         self.d_model = d_model
         self.att_dim = att_dim
@@ -27,7 +27,7 @@ class AttentionHead(nn.Module):
 
 class SparseMultiHeadAttention(nn.Module):
     def __init__(self, n_head: int, n_active: int, d_model: int, d_attn: int):
-        super().__init__()
+        super(SparseMultiHeadAttention, self).__init__()
 
         self.n_head, self.n_active, self.d_model, self.d_attn = n_head, n_active, d_model, d_attn
 

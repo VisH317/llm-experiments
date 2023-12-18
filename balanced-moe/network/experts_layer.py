@@ -4,6 +4,8 @@ from torch import nn, functional as F, Tensor
 
 class TransformerExperts():
     def __init__(self, n_experts: int, topk: int, n_encoders: int, d_model: int, n_head: int, d_ff: int):
+        super(TransformerExperts, self).__init__()
+        
         encoder_layer = nn.TransformerEncoderLayer(d_model, n_head, d_ff, dropout=0.1)
 
         self.n_experts = n_experts
