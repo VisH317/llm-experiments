@@ -7,6 +7,11 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
+torch = "^2.0.0"
+torch-geometric = "*"
+fast-pytorch-kmeans = "*"
+sentence-transformers = "*"
+datasets = "*"
 
 
 [build-system]
