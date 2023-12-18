@@ -1,18 +1,8 @@
-import configparser
-from datasets import load_dataset, IterableDataset
 import torch
-from torch.utils.data import DataLoader
 from torch import Tensor
 import random
+import math
 
-class WikipediaData:
-    def __init__(self, batch_size: int = 64):
-        self.dataset: IterableDataset = load_dataset("wikipedia", "20220301.en", split="train", streaming=True)
-        self.batch_size = batch_size
-
-    def get_epoch(self) -> DataLoader:
-        self.dataset.shuffle(buffer_size=5000)
-        return DataLoader(self.dataset, num_workers=4, batch_size=self.batch_size)
     
 class Vocab:
 
@@ -22,12 +12,15 @@ class Vocab:
 
         self.current_unused = 0
 
+        self.special = ["!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", ".", "-", "/"]
+
         with open(file_path) as f:
             self.vocab = f.read().split("\n")
     
 
     def tokenize(self, item: str) -> list[str]: 
-        return item.split(" ")
+        for s in self.special: item.replace(s, f" {s} ")
+        return [tok for tok in item.split(" ") if len(tok) > 0]
 
 
     def pad(self, item: list[str], take_last: bool = False) -> tuple[list[str], int]:
@@ -64,11 +57,19 @@ class Vocab:
         toks[ix] = self.mask
         return self.encode(toks)
     
-    def format_nwp(self, item: str) -> Tensor:
+    def format_clm(self, item: str) -> Tensor:
         toks = self.tokenize(item)
         toks.append(self.mask)
         pad_toks, l = self.pad(toks)
         return self.encode(pad_toks)
+    
+    def format_clm_rand_length(self, item: str) -> Tensor:
+        toks = self.tokenize(item)
+        ix = random.randint(math.floor(len(toks) * 0.5), len(toks))
+        pad_toks, l = self.pad(toks[:ix])
+        return self.encode(pad_toks)
+    
+
     
 
 
