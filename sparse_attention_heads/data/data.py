@@ -12,10 +12,13 @@ class WikipediaData:
         logger = logging.getLogger()
         logger.info("Loading dataset")
         self.dataset: IterableDataset = load_dataset("wikipedia", "20220301.en", split="train", streaming=True)
-        logger.info("Dataset loaded!", self.dataset.shape)
+        logger.info("Dataset loaded!")
         self.batch_size = batch_size
         self.val_size = val_size
 
     def get_epoch(self) -> DataLoader:
         self.dataset.shuffle(buffer_size=5000)
-        return DataLoader(self.dataset, num_workers=4, batch_size=self.batch_size+self.val_size, collate_fn=collate)
+        return DataLoader(self.dataset, num_workers=1, batch_size=self.batch_size+self.val_size, collate_fn=collate)
+    
+    def __len__(self) -> int:
+        return 6458670 # this is just from the dataset for en samples, probably should manually count this but its only for tqdm anyway :)

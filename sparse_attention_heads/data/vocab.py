@@ -50,7 +50,7 @@ class Vocab:
         return [tok for tok in item.split(" ") if len(tok) > 0]
 
 
-    def pad(self, item: list[str], take_last: bool = False) -> tuple[list[str], int]:
+    def pad_seq(self, item: list[str], take_last: bool = False) -> tuple[list[str], int]:
         l = len(item)
 
         if len(item) < 64:
@@ -82,7 +82,7 @@ class Vocab:
 
 
     def format_mlm(self, item: str) -> tuple[Tensor, Tensor]:
-        toks, l = self.pad(self.tokenize(item))
+        toks, l = self.pad_seq(self.tokenize(item))
         ix = random.randint(0, l-1)
         y = toks[ix]
         toks[ix] = self.mask
@@ -92,7 +92,7 @@ class Vocab:
         toks = self.tokenize(item)
         y = toks[-1]
         toks[-1] = self.mask
-        pad_toks, l = self.pad(toks)
+        pad_toks, l = self.pad_seq(toks)
         return self.encode(pad_toks), self.one_hot(y)
     
     def format_clm_rand_length(self, item: str) -> tuple[Tensor, Tensor]:
@@ -101,7 +101,7 @@ class Vocab:
         new_seq = toks[:ix]
         y = new_seq[-1]
         new_seq[-1] = self.mask
-        pad_toks, l = self.pad(new_seq)
+        pad_toks, l = self.pad_seq(new_seq)
         return self.encode(pad_toks), self.one_hot(y)
     
     def format_batch(self, items: list[str], task: Task) -> tuple[Tensor, Tensor]:

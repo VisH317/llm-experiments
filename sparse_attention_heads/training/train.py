@@ -53,9 +53,6 @@ def train():
     val_losses = []
 
     for epoch in range(n_epochs):
-        # get shuffled dataloader for the epoch 
-        # TODO: add validation data lol
-
         logging.getLogger().info(f"Loading epoch {epoch}...")
 
         loader = dataset.get_epoch()
@@ -65,16 +62,22 @@ def train():
 
         format_desc = lambda: f"Epoch {epoch}, Loss: {(epoch_running_losses[-1] if len(epoch_running_losses) > 0 else 0) if len(epoch_running_losses) <= 5 else sum(epoch_running_losses)/5}, Val: {(epoch_validation_losses[-1] if len(epoch_validation_losses) > 0 else 0) if len(epoch_validation_losses) <= 5 else sum(epoch_validation_losses)/5}"
 
-        for ix, data in tqdm(enumerate(loader), desc=format_desc()):
+        for ix, data in tqdm(enumerate(loader), desc=format_desc(), total=len(dataset)):
             train_X, train_y, val_X, val_y = process_batch(data)
+
+            logging.getLogger().info("batch processed!")
 
             optim.zero_grad()
 
             logits = model(train_X)
             out = classifier(logits)
 
+            logging.getLogger().info("output processed!")
+
             loss = loss_func(out, train_y)
             epoch_running_losses.append(loss)
+
+            logging.getLogger().info("backward pog!")
 
             loss.backward()
             optim.step()
