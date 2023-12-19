@@ -1,7 +1,10 @@
+import os
 import torch
+import configparser
 from torch import nn, Tensor, functional as F
 from modules.sparse_encoder import SparseEncoderLayers
 from modules.pos_enc import PositionalEncoding
+from data import Vocab
 
 
 class Preprocess(nn.Module):
@@ -27,4 +30,24 @@ class SparseTransformer(nn.Module):
         pre = self.pre(input)
         return self.encoders(pre)
     
+    @staticmethod
+    def from_config(file_path: str):
+        config = configparser.ConfigParser()
+        abs_path = os.path.join(os.getcwd(), file_path)
+        config.read(abs_path)
+        
+        # vocab config
+        vocab_size = config.get("vocab", "vocab_size")
+        max_len = config.get("vocab", "max_len")
+        dropout_embed = config.get("vocab", "dropout_embed")
+
+        # transformer config
+        n_layers = config.get("vocab", "n_layers")
+        d_model = config.get("vocab", "d_model")
+        n_head = config.get("vocab", "n_head")
+        n_active = config.get("vocab", "n_active")
+        d_attn = config.get("vocab", "d_attn")
+        d_ff = config.get("vocab", "d_ff")
+        dropout = config.get("vocab", "dropout")
     
+        return SparseTransformer(n_layers, d_model, n_head, n_active, d_attn, d_ff, vocab_size, max_len, dropout, dropout_embed)
