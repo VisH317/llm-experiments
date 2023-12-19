@@ -41,12 +41,14 @@ class SparseMultiHeadAttention(nn.Module):
 
     def forward(self, input: Tensor) -> Tensor:
         dist = self.router(input)
+        print(dist.size())
         sparse_dist = torch.topk(dist, self.n_active)
         # TODO: test if you need to insert an extra softmax for the sparse dist here so it adds up to one value (or layernorm fixes this?)
 
         outputs = torch.empty((self.n_active, input.size()[-2], input.size()[-1]))
 
         for ix, head in enumerate(self.heads):
+            print(sparse_dist[ix], ", ", sparse_dist.size())
             outputs[ix] = head(input) * sparse_dist[ix] if sparse_dist[ix] != 0 else torch.zeros_like(input)
 
         return self.w_O(torch.sum(outputs, 0))
