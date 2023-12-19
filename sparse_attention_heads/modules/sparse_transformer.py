@@ -1,4 +1,5 @@
 import os
+import torch
 import configparser
 from torch import nn, Tensor, functional as F
 from modules.sparse_encoder import SparseEncoderLayers
@@ -10,13 +11,13 @@ class Preprocess(nn.Module):
 
     def __init__(self, n_vocab: int, d_model: int, max_len: int, dropout: float = 0.05):
         super(Preprocess, self).__init__()
-        self.embed = nn.Embedding(n_vocab, d_model)
+        self.embed = nn.Embedding(n_vocab, d_model).to(dtype=torch.float16)
         self.pos_enc = PositionalEncoding(d_model, max_len)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input: Tensor) -> Tensor:
         embed = self.embed(input)
-        pos = self.pos_enc(input)
+        pos = self.pos_enc(embed)
         return self.dropout(embed + pos)
     
 

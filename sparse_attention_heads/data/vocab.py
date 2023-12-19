@@ -38,8 +38,6 @@ class Vocab:
         n_unused = int(config.get("vocab", "n_unused"))
         vocab_path = config.get("vocab", "vocab_path")
 
-        print(os.getcwd())
-
         logging.getLogger().info("set up vocab + parser")
 
         return Vocab(vocab_path, vocab_size, max_len, n_unused)
@@ -61,14 +59,15 @@ class Vocab:
 
     def encode(self, item: list[str]) -> Tensor:
 
-        ret = torch.empty((self.max_len, self.vocab_size))
+        ret = torch.empty((self.max_len))
 
         for i, tok in enumerate(item):
             ret[i] = self.one_hot(tok)
         
         return ret
 
-    def one_hot(self, tok: str) -> Tensor:
+
+    def one_hot(self, tok: str) -> int:
         checked_tok = tok
         if tok.strip() not in self.vocab:
             if self.current_unused > self.num_unk: checked_tok = self.unk
@@ -76,9 +75,7 @@ class Vocab:
                 self.vocab[self.current_unused + 1] = tok
                 self.current_unused += 1
         
-        ten = torch.zeros((self.vocab_size))
-        ten[self.vocab.index(checked_tok)] = 1
-        return ten
+        return self.vocab.index(checked_tok)
 
 
     def format_mlm(self, item: str) -> tuple[Tensor, Tensor]:
@@ -105,14 +102,14 @@ class Vocab:
         return self.encode(pad_toks), self.one_hot(y)
     
     def format_batch(self, items: list[str], task: Task) -> tuple[Tensor, Tensor]:
-        X, y = torch.empty((len(items), self.max_len, self.vocab_size)), torch.empty((len(items), self.vocab_size))
+        X, y = torch.empty((len(items), self.max_len)), torch.empty((len(items)))
 
         for ix, item in enumerate(items):
             i_X, i_y = self.format_mlm(item) if task == Task.mlm else self.format_clm(item) if task == Task.clm else self.format_clm_rand_length(item)
             X[ix] = i_X
             y[ix] = i_y
         
-        return X, y
+        return X.to(dtype=torch.int64), y.to(dtype=torch.int64)
     
 
     

@@ -28,9 +28,9 @@ def train():
     vocab_size: int = int(config.get("vocab", "vocab_size"))
 
     # initializing modules
-    dataset = WikipediaData(batch_size)
+    # dataset = WikipediaData(batch_size)
     vocab = Vocab.from_config(CFG_FILE)
-    model = SparseTransformer.from_config(CFG_FILE)
+    model = SparseTransformer.from_config(CFG_FILE).to(dtype=torch.float32)
 
     # optim config
     optim = torch.optim.AdamW(model.parameters(), lr)
@@ -44,7 +44,7 @@ def train():
 
     # helper function to preprocess a batch (closure for the vocab object)
     def process_batch(data: list[str]):
-        train_data, val_data = data[:dataset.batch_size], data[dataset.batch_size:]
+        train_data, val_data = data[:batch_size], data[batch_size:]
         train_X, train_y = vocab.format_batch(train_data, task)
         val_X, val_y = vocab.format_batch(val_data, task)
         return train_X, train_y, val_X, val_y
@@ -55,15 +55,17 @@ def train():
     for epoch in range(n_epochs):
         logging.getLogger().info(f"Loading epoch {epoch}...")
 
-        loader = dataset.get_epoch()
+        # loader = dataset.get_epoch()
 
         epoch_running_losses = []
         epoch_validation_losses = []
 
         format_desc = lambda: f"Epoch {epoch}, Loss: {(epoch_running_losses[-1] if len(epoch_running_losses) > 0 else 0) if len(epoch_running_losses) <= 5 else sum(epoch_running_losses)/5}, Val: {(epoch_validation_losses[-1] if len(epoch_validation_losses) > 0 else 0) if len(epoch_validation_losses) <= 5 else sum(epoch_validation_losses)/5}"
 
-        for ix, data in tqdm(enumerate(loader), desc=format_desc(), total=len(dataset)):
-            train_X, train_y, val_X, val_y = process_batch(data)
+        for ix, data in tqdm(enumerate([4]), desc=format_desc()): #total=len(dataset)
+            # train_X, train_y, val_X, val_y = process_batch(data)
+            test_li = ["The quick brown fox jumps over the lazy"] * batch_size
+            train_X, train_y, val_X, val_y = process_batch(test_li)
 
             logging.getLogger().info("batch processed!")
 
