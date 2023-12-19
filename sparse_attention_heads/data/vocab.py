@@ -99,7 +99,7 @@ class Vocab:
         pad_toks, l = self.pad(new_seq)
         return self.encode(pad_toks), self.one_hot(y)
     
-    def format_batch(self, items: list[dict], task: Task) -> tuple[Tensor, Tensor]:
+    def format_batch(self, items: list[str], task: Task) -> tuple[Tensor, Tensor]:
         X, y = torch.empty((len(items), self.max_len, self.vocab_size)), torch.empty((len(items), self.vocab_size))
 
         for ix, item in enumerate(items):
