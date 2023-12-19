@@ -1,4 +1,5 @@
 import os
+import logging
 import configparser
 import torch
 from torch import nn
@@ -18,13 +19,13 @@ def train():
     config.read(abs_path)
 
     task: Task = config.get("train", "task")
-    batch_size: int = config.get("train", "batch_size")
-    n_epochs: int = config.get("train", "n_epochs")
-    lr: float = config.get("train", "lr")
+    batch_size: int = int(config.get("train", "batch_size"))
+    n_epochs: int = int(config.get("train", "n_epochs"))
+    lr: float = float(config.get("train", "lr"))
 
-    d_model: int = config.get("transformer", "d_model")
-    max_len: int = config.get("vocab", "max_len")
-    vocab_size: int = config.get("vocab", "vocab_size")
+    d_model: int = int(config.get("transformer", "d_model"))
+    max_len: int = int(config.get("vocab", "max_len"))
+    vocab_size: int = int(config.get("vocab", "vocab_size"))
 
     # initializing modules
     dataset = WikipediaData(batch_size)
@@ -32,7 +33,7 @@ def train():
     model = SparseTransformer.from_config(CFG_FILE)
 
     # optim config
-    optim = torch.optim.AdamW(model.paramters(), lr)
+    optim = torch.optim.AdamW(model.parameters(), lr)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma=0.8)
 
     # loss config
@@ -55,12 +56,14 @@ def train():
         # get shuffled dataloader for the epoch 
         # TODO: add validation data lol
 
+        logging.getLogger().info(f"Loading epoch {epoch}...")
+
         loader = dataset.get_epoch()
 
         epoch_running_losses = []
         epoch_validation_losses = []
 
-        format_desc = lambda: f"Epoch {epoch}, Loss: {epoch_running_losses[-1] if len(epoch_running_losses) <= 5 else sum(epoch_running_losses)/5}, Val: {epoch_validation_losses[-1] if len(epoch_validation_losses) <= 5 else sum(epoch_validation_losses)/5}"
+        format_desc = lambda: f"Epoch {epoch}, Loss: {(epoch_running_losses[-1] if len(epoch_running_losses) > 0 else 0) if len(epoch_running_losses) <= 5 else sum(epoch_running_losses)/5}, Val: {(epoch_validation_losses[-1] if len(epoch_validation_losses) > 0 else 0) if len(epoch_validation_losses) <= 5 else sum(epoch_validation_losses)/5}"
 
         for ix, data in tqdm(enumerate(loader), desc=format_desc()):
             train_X, train_y, val_X, val_y = process_batch(data)
@@ -75,6 +78,8 @@ def train():
 
             loss.backward()
             optim.step()
+
+            break
 
             # validation loop
             with torch.no_grad():

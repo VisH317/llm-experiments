@@ -6,6 +6,7 @@ from torch import nn, Tensor
 class TokenClassifier(nn.Module):
 
     def __init__(self, d_model: int, max_len: int, vocab_size: int):
+        super(TokenClassifier, self).__init__()
         self.seq = nn.Sequential(
             nn.Linear(max_len * d_model, vocab_size),
             nn.Softmax(0)

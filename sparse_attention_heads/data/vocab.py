@@ -4,6 +4,7 @@ import configparser
 from torch import Tensor
 import random
 import math
+import logging
 from enum import Enum
     
 class Task(str, Enum):
@@ -32,10 +33,14 @@ class Vocab:
         config.read(abs_path)
 
         # vocab config
-        vocab_size = config.get("vocab", "vocab_size")
-        max_len = config.get("vocab", "max_len")
-        n_unused = config.get("vocab", "n_unused")
+        vocab_size = int(config.get("vocab", "vocab_size"))
+        max_len = int(config.get("vocab", "max_len"))
+        n_unused = int(config.get("vocab", "n_unused"))
         vocab_path = config.get("vocab", "vocab_path")
+
+        print(os.getcwd())
+
+        logging.getLogger().info("set up vocab + parser")
 
         return Vocab(vocab_path, vocab_size, max_len, n_unused)
 
