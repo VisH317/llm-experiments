@@ -4,8 +4,13 @@ import configparser
 from torch import Tensor
 import random
 import math
-
+from enum import Enum
     
+class Task(str, Enum):
+    mlm = "mlm"
+    clm = "clm"
+    clm_rand = "clm_rand"
+
 class Vocab:
 
     def __init__(self, file_path: str, vocab_size: int, max_len: int, num_unk: int, pad: str = "[PAD]", start: str = "[CLS]", end: str = "[SEP]", mask: str = "[MASK]", unk: str = "[UNK]"):
@@ -71,21 +76,21 @@ class Vocab:
         return ten
 
 
-    def format_mlm(self, item: str) -> Tensor:
+    def format_mlm(self, item: str) -> tuple[Tensor, Tensor]:
         toks, l = self.pad(self.tokenize(item))
         ix = random.randint(0, l-1)
         y = toks[ix]
         toks[ix] = self.mask
         return self.encode(toks), self.one_hot(y)
     
-    def format_clm(self, item: str) -> Tensor:
+    def format_clm(self, item: str) -> tuple[Tensor, Tensor]:
         toks = self.tokenize(item)
         y = toks[-1]
         toks[-1] = self.mask
         pad_toks, l = self.pad(toks)
         return self.encode(pad_toks), self.one_hot(y)
     
-    def format_clm_rand_length(self, item: str) -> Tensor:
+    def format_clm_rand_length(self, item: str) -> tuple[Tensor, Tensor]:
         toks = self.tokenize(item)
         ix = random.randint(math.floor(len(toks) * 0.5), len(toks))
         new_seq = toks[:ix]
@@ -93,6 +98,16 @@ class Vocab:
         new_seq[-1] = self.mask
         pad_toks, l = self.pad(new_seq)
         return self.encode(pad_toks), self.one_hot(y)
+    
+    def format_batch(self, items: list[dict], task: Task) -> tuple[Tensor, Tensor]:
+        X, y = torch.empty((len(items), self.max_len, self.vocab_size)), torch.empty((len(items), self.vocab_size))
+
+        for ix, item in enumerate(items):
+            i_X, i_y = self.format_mlm(item) if task == Task.mlm else self.format_clm(item) if task == Task.clm else self.format_clm_rand_length(item)
+            X[ix] = i_X
+            y[ix] = i_y
+        
+        return X, y
     
 
     

@@ -1,2 +1,2 @@
 from .data import WikipediaData
-from .vocab import Vocab
+from .vocab import Vocab, Task
