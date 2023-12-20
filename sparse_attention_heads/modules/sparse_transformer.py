@@ -3,6 +3,7 @@ import torch
 import configparser
 from torch import nn, Tensor, functional as F
 from modules.sparse_encoder import SparseEncoderLayers
+from modules.sparse_mha import RouteType
 from modules.pos_enc import PositionalEncoding
 import logging
 
@@ -23,7 +24,7 @@ class Preprocess(nn.Module):
 
 class SparseTransformer(nn.Module):
 
-    def __init__(self, n_layers: int, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, vocab_size: int, max_len: int, dropout: float = 0.1, dropout_embed: float = 0.05):
+    def __init__(self, n_layers: int, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, vocab_size: int, max_len: int, dropout: float = 0.1, dropout_embed: float = 0.05, route_type: RouteType = "sum"):
         super(SparseTransformer, self).__init__()
         self.pre = Preprocess(vocab_size, d_model, max_len, dropout_embed)
         self.encoders = SparseEncoderLayers(n_layers, d_model, n_head, n_active, d_attn, d_ff, dropout)
@@ -53,7 +54,8 @@ class SparseTransformer(nn.Module):
         d_attn = int(config.get("transformer", "d_attn"))
         d_ff = int(config.get("transformer", "d_ff"))
         dropout = float(config.get("transformer", "dropout"))
+        route_type = config.get("transformer", "route_type")
 
         logging.getLogger().info("initializing sparse heads transformer")
     
-        return SparseTransformer(n_layers, d_model, n_head, n_active, d_attn, d_ff, vocab_size, max_len, dropout, dropout_embed)
+        return SparseTransformer(n_layers, d_model, n_head, n_active, d_attn, d_ff, vocab_size, max_len, dropout, dropout_embed, route_type)

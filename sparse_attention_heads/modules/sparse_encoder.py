@@ -1,13 +1,13 @@
 import torch
 from torch import nn, Tensor, functional as F
-from .sparse_mha import SparseMultiHeadAttention
+from .sparse_mha import SparseMultiHeadAttention, RouteType
 
 class SparseEncoder(nn.Module):
 
-    def __init__(self, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float):
+    def __init__(self, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float, route_type: RouteType):
         super(SparseEncoder, self).__init__()
 
-        self.attn = SparseMultiHeadAttention(n_head, n_active, d_model, d_attn)
+        self.attn = SparseMultiHeadAttention(n_head, n_active, d_model, d_attn, route_type)
         
         self.ff = nn.Sequential(
             nn.Linear(d_model, d_ff),
