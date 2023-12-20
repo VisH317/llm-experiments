@@ -25,21 +25,23 @@ class AttentionHead(nn.Module):
         K: Tensor = self.key(input)
         V: Tensor = self.value(input)
 
-        QK = torch.matmul(Q, K.transpose(0, 1)) / torch.sqrt(torch.Tensor(self.att_dim))
+        print(Q.size(), ", ", K.size())
+
+        QK = torch.matmul(Q, K.transpose(-2, -1)) / torch.sqrt(torch.Tensor(self.att_dim))
         score = F.softmax(QK)
 
         return torch.matmul(score, V)
 
 
 class SparseMultiHeadAttention(nn.Module):
-    def __init__(self, n_head: int, n_active: int, d_model: int, d_attn: int, route_type: RouteType):
+    def __init__(self, n_head: int, n_active: int, d_model: int, d_attn: int, route_type: str):
         super(SparseMultiHeadAttention, self).__init__()
 
         self.n_head, self.n_active, self.d_model, self.d_attn = n_head, n_active, d_model, d_attn
 
         self.heads = nn.ModuleList([AttentionHead(d_model, d_attn) for _ in range(n_head)])
 
-        self.route_type: RouteType = route_type
+        self.route_type: RouteType = RouteType(route_type)
 
         if self.route_type == RouteType.att:
             self.att = nn.Linear(d_model, 1)
@@ -48,33 +50,44 @@ class SparseMultiHeadAttention(nn.Module):
         self.w_O = nn.Linear(d_attn * n_active, d_model)
 
     def forward(self, input: Tensor) -> Tensor:
-        dist = self.router(input) # returns dim (batch_size, n_heads)
-        print(dist.size())
-        sparse_dist_idx = torch.topk(dist, self.n_active, -1).indices # returns dim (batch_size, n_active)
+        dist = self.route(input) # returns dim (batch_size, n_heads)
+        sparse_dist_val = torch.topk(dist, self.n_active, -1) # returns dim (batch_size, n_active)
+        sparse_dist_idx = sparse_dist_val.indices
         # TODO: test if you need to insert an extra softmax for the sparse dist here so it adds up to one value (or layernorm fixes this?)
 
         sparse_dist = torch.zeros_like(dist).scatter(-1, sparse_dist_idx, dist)
         sparse_dist = sparse_dist.softmax(1) # softmax not confirmed
 
-        outputs = torch.empty((self.n_active, input.size()[-2], input.size()[-1]))
+        outputs = torch.empty((input.size()[0], self.n_active, input.size()[-2], input.size()[-1]))
 
-        for ix, head in enumerate(self.heads):
-            outputs[ix] = head(input) * sparse_dist[ix] if sparse_dist[ix] != 0 else torch.zeros_like(input)
+        for ix in range(input.size()[0]):
+            outputs[ix] = self.compute_head(input[ix], sparse_dist[ix])
 
-        return self.w_O(torch.sum(outputs, 0))
+        return self.w_O(torch.sum(outputs, -2))
 
     # router functions
 
-    def sum_router(self, input: Tensor) -> Tensor:
-        match self.route_type:
-            case RouteType.sum:
-                out = self.router(input) # dim (batch, seq, n_head)
-                return torch.sum(out, 1).softmax(1)
-            case RouteType.mean:
-                out = self.router(input)
-                return torch.mean(out, 1).softmax(1)
-            case RouteType.att:
-                return self.att_router(input)
+    def compute_head(self, input: Tensor, sparse_dist: Tensor) -> Tensor:
+        outputs = torch.empty((self.n_active, input.size()[-2], input.size()[-1]))
+
+        for ix, head in enumerate(self.heads):
+            print(sparse_dist.size())
+            outputs[ix] = head(input) * sparse_dist[ix] if sparse_dist[ix] != 0 else torch.zeros_like(input)
+
+        return outputs
+
+
+    def route(self, input: Tensor) -> Tensor:
+        print(self.route_type, ", ", type(self.route_type), ", ", RouteType.sum)
+        if self.route_type == RouteType.sum:
+            out = self.router(input) # dim (batch, seq, n_head)
+            return torch.sum(out, 1).softmax(1)
+        elif self.route_type == RouteType.mean:
+            out = self.router(input)
+            return torch.mean(out, 1).softmax(1)
+        elif self.route_type == RouteType.att:
+            return self.att_router(input)
+        else: raise TypeError("Route pooling type not recognized")
 
     def att_router(self, input: Tensor) -> Tensor:
         if self.route_type != RouteType.att: raise TypeError("Wrong routing type, attention called when not initialized")

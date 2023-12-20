@@ -24,10 +24,10 @@ class Preprocess(nn.Module):
 
 class SparseTransformer(nn.Module):
 
-    def __init__(self, n_layers: int, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, vocab_size: int, max_len: int, dropout: float = 0.1, dropout_embed: float = 0.05, route_type: RouteType = "sum"):
+    def __init__(self, n_layers: int, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, vocab_size: int, max_len: int, dropout: float = 0.1, dropout_embed: float = 0.05, route_type: str = "sum"):
         super(SparseTransformer, self).__init__()
         self.pre = Preprocess(vocab_size, d_model, max_len, dropout_embed)
-        self.encoders = SparseEncoderLayers(n_layers, d_model, n_head, n_active, d_attn, d_ff, dropout)
+        self.encoders = SparseEncoderLayers(n_layers, d_model, n_head, n_active, d_attn, d_ff, dropout, route_type)
 
 
     def forward(self, input: Tensor) -> Tensor:

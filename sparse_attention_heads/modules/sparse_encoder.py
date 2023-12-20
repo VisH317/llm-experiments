@@ -4,7 +4,7 @@ from .sparse_mha import SparseMultiHeadAttention, RouteType
 
 class SparseEncoder(nn.Module):
 
-    def __init__(self, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float, route_type: RouteType):
+    def __init__(self, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float, route_type: str):
         super(SparseEncoder, self).__init__()
 
         self.attn = SparseMultiHeadAttention(n_head, n_active, d_model, d_attn, route_type)
@@ -28,11 +28,11 @@ class SparseEncoder(nn.Module):
 
 class SparseEncoderLayers(nn.Module):
 
-    def __init__(self, n_layers, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float = 0.1):
+    def __init__(self, n_layers, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float = 0.1, route_type: str = "sum"):
         super(SparseEncoderLayers, self).__init__()
 
         self.layers = nn.Sequential(
-            *[SparseEncoder(d_model, n_head, n_active, d_attn, d_ff, dropout) for _ in range(n_layers)]
+            *[SparseEncoder(d_model, n_head, n_active, d_attn, d_ff, dropout, route_type) for _ in range(n_layers)]
         )
 
     def forward(self, input: Tensor) -> Tensor:
