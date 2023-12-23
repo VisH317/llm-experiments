@@ -486,3 +486,7 @@
 [INFO ]  initializing sparse heads transformer (2023-12-21 09:40:06,697)
 [INFO ]  Loading epoch 0... (2023-12-21 09:40:10,410)
 [INFO ]  batch processed! (2023-12-21 09:40:10,506)
+[INFO ]  set up vocab + parser (2023-12-22 09:50:15,855)
+[INFO ]  initializing sparse heads transformer (2023-12-22 09:50:15,865)
+[INFO ]  Loading epoch 0... (2023-12-22 09:50:21,291)
+[INFO ]  batch processed! (2023-12-22 09:50:21,395)
