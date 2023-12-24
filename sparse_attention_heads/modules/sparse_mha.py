@@ -39,10 +39,13 @@ class SparseMultiHeadAttention(nn.Module):
         # input size: (batch_size, seq_len, d_model)
         batch_size, seq_len, d_Model = input.size()
         dist = self.route(input) # returns dim (batch_size, n_heads)
+        # TODO: CONFIDENCE SAMPLING OR RANDOM NOISE TO SIMULATE TRYING OTHER HEADS, OR DIFFERENT INITIALIZATION
         sparse_dist_val = torch.topk(dist, self.n_active, -1) # returns dim (batch_size, n_active)
         sparse_dist_idx = sparse_dist_val.indices
 
         sparse_dist = torch.full_like(dist, -1).scatter(-1, sparse_dist_idx, dist)
+
+        dist_dense = dist[sparse_dist != -1].reshape(batch_size, self.n_active).unsqueeze(-1).unsqueeze(-1) # size: (batch_size, n_head, 1, 1)
 
         print("sparse_dist: ", sparse_dist_idx, dist)
 
@@ -58,10 +61,11 @@ class SparseMultiHeadAttention(nn.Module):
         V = V_unfiltered[sparse_dist != -1].reshape(batch_size, self.n_active, seq_len, self.d_attn)
 
         # each batch has its own conditional
-        # TODO: MULTIPLY BY THE SPARSE WEIGHTS HERE
-        O = self.scaled_dot_product_attention(Q, K, V).permute(0, 2, 1, 3).reshape(batch_size, seq_len, self.n_active * self.d_attn) # batch_size, n_active, seq_len, d_attn
+        O = self.scaled_dot_product_attention(Q, K, V)
+        O_gated = dist_dense * O
+        O_final = O_gated.permute(0, 2, 1, 3).reshape(batch_size, seq_len, self.n_active * self.d_attn) # batch_size, n_active, seq_len, d_attn
         # TODO: experiment with the output layer and see if it can generalize to sparse (prob not, so try separate Os instead later)
-        Z = self.w_O(O) # batch_size, seq_len, d_attn
+        Z = self.w_O(O_final) # batch_size, seq_len, d_attn
 
         return Z
 
