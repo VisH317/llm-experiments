@@ -8,42 +8,12 @@ class RouteType(Enum):
     att = "att"
 
 
-class AttentionHead(nn.Module):
-
-    def __init__(self, d_model: int, att_dim: int):
-        super(AttentionHead, self).__init__()
-
-        self.d_model = d_model
-        self.att_dim = att_dim
-
-        # self.query = nn.Linear(d_model, att_dim)
-        # self.key = nn.Linear(d_model, att_dim)
-        # self.value = nn.Linear(d_model, att_dim)
-
-    def forward(self, Q: Tensor, K: Tensor, V: Tensor) -> Tensor:
-        # Q: Tensor = self.query(input)
-        # K: Tensor = self.key(input)
-        # V: Tensor = self.value(input)
-
-        print(Q.size(), ", ", K.size())
-
-        K_T = K.transpose(-2, -1) 
-
-        QK = torch.matmul(Q, K_T)
-        print(QK.size())
-        QK_scaled = QK / (self.att_dim ** 0.5)
-        score = QK_scaled.softmax(-1)
-
-        return torch.matmul(score, V)
-
 
 class SparseMultiHeadAttention(nn.Module):
     def __init__(self, n_head: int, n_active: int, d_model: int, d_attn: int, route_type: str):
         super(SparseMultiHeadAttention, self).__init__()
 
         self.n_head, self.n_active, self.d_model, self.d_attn = n_head, n_active, d_model, d_attn
-
-        self.heads = nn.ModuleList([AttentionHead(d_model, d_attn) for _ in range(n_head)])
 
         self.route_type: RouteType = RouteType(route_type)
 
@@ -59,52 +29,52 @@ class SparseMultiHeadAttention(nn.Module):
         self.router = nn.Linear(d_model, n_head) # need to experiment with pooling in this layer here (max pooling, sum pooling, or additive attention)
         self.w_O = nn.Linear(d_attn * n_active, d_model)
 
+        self.softmax = nn.Softmax(-1)
+
     def _reset_parameters(self):
         pass # initialize head_in here
 
     def forward(self, input: Tensor) -> Tensor:
         # input size: (batch_size, seq_len, d_model)
+        batch_size, seq_len, d_Model = input.size()
         dist = self.route(input) # returns dim (batch_size, n_heads)
         sparse_dist_val = torch.topk(dist, self.n_active, -1) # returns dim (batch_size, n_active)
         sparse_dist_idx = sparse_dist_val.indices
 
-        Q = self.query(input).reshape(input.size()[0], input.size()[1], self.n_head, self.d_attn).permute(0, 2, 1, 3) # (batch_size, n_head, seq_len, d_attn)
-        K = self.key(input).reshape(input.size()[0], input.size()[1], self.n_head, self.d_attn).permute(0, 2, 1, 3)
-        V = self.value(input).reshape(input.size()[0], input.size()[1], self.n_head, self.d_attn).permute(0, 2, 1, 3)
-
-        # TODO: test if you need to insert an extra softmax for the sparse dist here so it adds up to one value (or layernorm fixes this?)
-
         sparse_dist = torch.zeros_like(dist).scatter(-1, sparse_dist_idx, dist)
-        sparse_dist = sparse_dist.softmax(1).unsqueeze(-1).unsqueeze(-1) # softmax not confirmed
+        sparse_dist = sparse_dist.softmax(1) # softmax not confirmed
 
-        Q_dist, K_dist, V_dist = Q * sparse_dist, K * sparse_dist, V * sparse_dist
+        sparse_dist = sparse_dist.repeat(seq_len, self.d_attn, 1, 1).permute(2, 3, 0, 1)
 
-        print("sizess: ", Q_dist.size())
+        Q_unfiltered = self.query(input).reshape(batch_size, seq_len, self.n_head, self.d_attn).permute(0, 2, 1, 3) # (batch_size, n_head, seq_len, d_attn)
+        K_unfiltered = self.key(input).reshape(batch_size, seq_len, self.n_head, self.d_attn).permute(0, 2, 1, 3)
+        V_unfiltered = self.value(input).reshape(batch_size, seq_len, self.n_head, self.d_attn).permute(0, 2, 1, 3)
 
-        Q_dist_filtered, K_dist_filtered, V_dist_filtered = torch.empty((Q.size()[0], self.n_head, Q.size()[2], self.d_attn))
-
-        for b in range(Q.size()[0]): # might need a custom CUDA kernel to do this parallelizedly
-            Q_b_filt = Q_dist[b, Q_dist]
+        Q = Q_unfiltered[sparse_dist != 0].reshape(batch_size, self.n_active, seq_len, self.d_attn)
+        K = K_unfiltered[sparse_dist != 0].reshape(batch_size, self.n_active, seq_len, self.d_attn)
+        V = V_unfiltered[sparse_dist != 0].reshape(batch_size, self.n_active, seq_len, self.d_attn)
 
         # each batch has its own conditional
 
-        outputs = torch.empty((input.size()[0], self.n_active, input.size()[-2], self.d_attn))
+        O = self.scaled_dot_product_attention(Q, K, V).permute(0, 2, 1, 3).reshape(batch_size, seq_len, self.n_active * self.d_attn) # batch_size, n_active, seq_len, d_attn
+        Z = self.w_O(O) # batch_size, seq_len, d_attn
 
-        for ix in range(input.size()[0]):
-            outputs[ix] = self.compute_head(input[ix], sparse_dist[ix], sparse_dist_idx[ix])
-
-        return self.w_O(torch.sum(outputs, -2))
+        return Z
 
     # router functions
 
-    def compute_head(self, input: Tensor, sparse_dist: Tensor, sparse_dist_idx: Tensor) -> Tensor:
-        outputs = torch.empty((self.n_active, input.size()[-2], self.d_attn))
+    def scaled_dot_product_attention(self, Q: Tensor, K: Tensor, V: Tensor) -> Tensor:
 
-        for ix in sparse_dist_idx:
-            print(list(sparse_dist_idx))
-            outputs[ix] = self.heads[ix](input) * sparse_dist[ix] # if sparse_dist[ix] != 0 else torch.zeros(input.size()[-2], self.d_attn)
+        batch_size, n_active, seq_len, d_attn = Q.size()
 
-        return outputs
+        K_T = K.transpose(-2, -1) 
+
+        QK = torch.matmul(Q, K_T)
+        print(QK.size())
+        QK_scaled = QK / (d_attn ** 0.5)
+        score = self.softmax(QK_scaled)
+
+        return torch.matmul(score, V)
 
 
     def route(self, input: Tensor) -> Tensor:
