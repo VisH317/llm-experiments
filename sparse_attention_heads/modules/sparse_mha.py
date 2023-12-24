@@ -12,7 +12,6 @@ class RouteType(Enum):
 class SparseMultiHeadAttention(nn.Module):
     def __init__(self, n_head: int, n_active: int, d_model: int, d_attn: int, route_type: str):
         super(SparseMultiHeadAttention, self).__init__()
-
         self.n_head, self.n_active, self.d_model, self.d_attn = n_head, n_active, d_model, d_attn
 
         self.route_type: RouteType = RouteType(route_type)
@@ -31,8 +30,10 @@ class SparseMultiHeadAttention(nn.Module):
 
         self.softmax = nn.Softmax(-1)
 
+        self._reset_parameters()
+
     def _reset_parameters(self):
-        pass # initialize head_in here
+        nn.init.xavier_normal_(self.router.weight) # need to find a better weight init for this
 
     def forward(self, input: Tensor) -> Tensor:
         # input size: (batch_size, seq_len, d_model)
@@ -41,8 +42,9 @@ class SparseMultiHeadAttention(nn.Module):
         sparse_dist_val = torch.topk(dist, self.n_active, -1) # returns dim (batch_size, n_active)
         sparse_dist_idx = sparse_dist_val.indices
 
-        sparse_dist = torch.zeros_like(dist).scatter(-1, sparse_dist_idx, dist)
-        sparse_dist = sparse_dist.softmax(1) # softmax not confirmed
+        sparse_dist = torch.full_like(dist, -1).scatter(-1, sparse_dist_idx, dist)
+
+        print("sparse_dist: ", sparse_dist_idx, dist)
 
         sparse_dist = sparse_dist.repeat(seq_len, self.d_attn, 1, 1).permute(2, 3, 0, 1)
 
@@ -50,13 +52,15 @@ class SparseMultiHeadAttention(nn.Module):
         K_unfiltered = self.key(input).reshape(batch_size, seq_len, self.n_head, self.d_attn).permute(0, 2, 1, 3)
         V_unfiltered = self.value(input).reshape(batch_size, seq_len, self.n_head, self.d_attn).permute(0, 2, 1, 3)
 
-        Q = Q_unfiltered[sparse_dist != 0].reshape(batch_size, self.n_active, seq_len, self.d_attn)
-        K = K_unfiltered[sparse_dist != 0].reshape(batch_size, self.n_active, seq_len, self.d_attn)
-        V = V_unfiltered[sparse_dist != 0].reshape(batch_size, self.n_active, seq_len, self.d_attn)
+
+        Q = Q_unfiltered[sparse_dist != -1].reshape(batch_size, self.n_active, seq_len, self.d_attn)
+        K = K_unfiltered[sparse_dist != -1].reshape(batch_size, self.n_active, seq_len, self.d_attn)
+        V = V_unfiltered[sparse_dist != -1].reshape(batch_size, self.n_active, seq_len, self.d_attn)
 
         # each batch has its own conditional
-
+        # TODO: MULTIPLY BY THE SPARSE WEIGHTS HERE
         O = self.scaled_dot_product_attention(Q, K, V).permute(0, 2, 1, 3).reshape(batch_size, seq_len, self.n_active * self.d_attn) # batch_size, n_active, seq_len, d_attn
+        # TODO: experiment with the output layer and see if it can generalize to sparse (prob not, so try separate Os instead later)
         Z = self.w_O(O) # batch_size, seq_len, d_attn
 
         return Z
@@ -70,7 +74,6 @@ class SparseMultiHeadAttention(nn.Module):
         K_T = K.transpose(-2, -1) 
 
         QK = torch.matmul(Q, K_T)
-        print(QK.size())
         QK_scaled = QK / (d_attn ** 0.5)
         score = self.softmax(QK_scaled)
 
@@ -78,7 +81,6 @@ class SparseMultiHeadAttention(nn.Module):
 
 
     def route(self, input: Tensor) -> Tensor:
-        print(self.route_type, ", ", type(self.route_type), ", ", RouteType.sum)
         if self.route_type == RouteType.sum:
             out = self.router(input) # dim (batch, seq, n_head)
             return torch.sum(out, 1).softmax(1)

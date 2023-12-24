@@ -28,7 +28,7 @@ def train():
     vocab_size: int = int(config.get("vocab", "vocab_size"))
 
     # initializing modules
-    # dataset = WikipediaData(batch_size)
+    dataset = WikipediaData(batch_size)
     vocab = Vocab.from_config(CFG_FILE)
     model = SparseTransformer.from_config(CFG_FILE).to(dtype=torch.float32)
 
@@ -55,14 +55,14 @@ def train():
     for epoch in range(n_epochs):
         logging.getLogger().info(f"Loading epoch {epoch}...")
 
-        # loader = dataset.get_epoch()
+        loader = dataset.get_epoch()
 
         epoch_running_losses = []
         epoch_validation_losses = []
 
         format_desc = lambda: f"Epoch {epoch}, Loss: {(epoch_running_losses[-1] if len(epoch_running_losses) > 0 else 0) if len(epoch_running_losses) <= 5 else sum(epoch_running_losses)/5}, Val: {(epoch_validation_losses[-1] if len(epoch_validation_losses) > 0 else 0) if len(epoch_validation_losses) <= 5 else sum(epoch_validation_losses)/5}"
 
-        for ix, data in tqdm(enumerate([4]), desc=format_desc()): #total=len(dataset)
+        for ix, data in tqdm(enumerate([4]), desc=format_desc(), total=len(dataset)): #total=len(dataset)
             # train_X, train_y, val_X, val_y = process_batch(data)
             test_li = ["The quick brown fox jumps over the lazy"] * batch_size
             train_X, train_y, val_X, val_y = process_batch(test_li)
@@ -70,6 +70,8 @@ def train():
             logging.getLogger().info("batch processed!")
 
             optim.zero_grad()
+
+            print("size: ", train_X.size)
 
             logits = model(train_X)
             out = classifier(logits)
