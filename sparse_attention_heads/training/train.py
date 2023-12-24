@@ -11,17 +11,18 @@ from .prediction_head import TokenClassifier
 CFG_FILE = "train.cfg"
 
 
-def train():
+def train(cfg: str = CFG_FILE) -> tuple[SparseTransformer, list[float], list[float]]:
 
     # getting train config
     config = configparser.ConfigParser()
-    abs_path = os.path.join(os.getcwd(), CFG_FILE)
+    abs_path = os.path.join(os.getcwd(), cfg)
     config.read(abs_path)
 
     task: Task = config.get("train", "task")
     batch_size: int = int(config.get("train", "batch_size"))
     n_epochs: int = int(config.get("train", "n_epochs"))
     lr: float = float(config.get("train", "lr"))
+    val_step: int = int(config.get("train", "val_step"))
 
     d_model: int = int(config.get("transformer", "d_model"))
     max_len: int = int(config.get("vocab", "max_len"))
@@ -49,8 +50,8 @@ def train():
         val_X, val_y = vocab.format_batch(val_data, task)
         return train_X, train_y, val_X, val_y
 
-    losses = []
-    val_losses = []
+    losses: list[float] = []
+    val_losses: list[float] = []
 
     for epoch in range(n_epochs):
         logging.getLogger().info(f"Loading epoch {epoch}...")
@@ -62,42 +63,35 @@ def train():
 
         format_desc = lambda: f"Epoch {epoch}, Loss: {(epoch_running_losses[-1] if len(epoch_running_losses) > 0 else 0) if len(epoch_running_losses) <= 5 else sum(epoch_running_losses)/5}, Val: {(epoch_validation_losses[-1] if len(epoch_validation_losses) > 0 else 0) if len(epoch_validation_losses) <= 5 else sum(epoch_validation_losses)/5}"
 
-        for ix, data in tqdm(enumerate([4]), desc=format_desc(), total=len(dataset)): #total=len(dataset)
+        for ix, data in tqdm(enumerate(loader), desc=format_desc(), total=len(dataset)):
             # train_X, train_y, val_X, val_y = process_batch(data)
             test_li = ["The quick brown fox jumps over the lazy"] * batch_size
             train_X, train_y, val_X, val_y = process_batch(test_li)
 
-            logging.getLogger().info("batch processed!")
-
             optim.zero_grad()
-
-            print("size: ", train_X.size)
 
             logits = model(train_X)
             out = classifier(logits)
 
-            logging.getLogger().info("output processed!")
-
             loss = loss_func(out, train_y)
             epoch_running_losses.append(loss)
-
-            logging.getLogger().info("backward pog!")
 
             loss.backward()
             optim.step()
 
-            break
-
             # validation loop
-            with torch.no_grad():
-                logits = model(val_X)
-                out = classifier(logits)
-                loss = loss_func(out, val_y)
-                epoch_validation_losses.append(loss)
+            if ix % val_step:
+                with torch.no_grad():
+                    logits = model(val_X)
+                    out = classifier(logits)
+                    loss = loss_func(out, val_y)
+                    epoch_validation_losses.append(loss)
     
 
-        losses.append(epoch_running_losses)
-        val_losses.append(epoch_validation_losses)
+        losses.extend(epoch_running_losses)
+        val_losses.extend(epoch_validation_losses)
         scheduler.step()
+
+    return model, losses, val_losses
 
         

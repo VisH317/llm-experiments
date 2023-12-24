@@ -56,8 +56,6 @@ class SparseMultiHeadAttention(nn.Module):
 
         dist_dense = dist[sparse_dist != -1].reshape(batch_size, self.n_active).unsqueeze(-1).unsqueeze(-1) # size: (batch_size, n_head, 1, 1)
 
-        print("sparse_dist: ", sparse_dist_idx, dist)
-
         sparse_dist = sparse_dist.repeat(seq_len, self.d_attn, 1, 1).permute(2, 3, 0, 1)
 
         Q_unfiltered = self.query(input).reshape(batch_size, seq_len, self.n_head, self.d_attn).permute(0, 2, 1, 3) # (batch_size, n_head, seq_len, d_attn)

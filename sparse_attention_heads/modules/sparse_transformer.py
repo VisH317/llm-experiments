@@ -59,6 +59,9 @@ class SparseTransformer(nn.Module):
         dropout = float(config.get("transformer", "dropout"))
         route_type = config.get("transformer", "route_type")
 
+        noise = float(config.get("transformer", "noise"))
+        noise_step = float(config.get("transformer", "noise_step"))
+
         logging.getLogger().info("initializing sparse heads transformer")
     
-        return SparseTransformer(n_layers, d_model, n_head, n_active, d_attn, d_ff, vocab_size, max_len, dropout, dropout_embed, route_type)
+        return SparseTransformer(n_layers, d_model, n_head, n_active, d_attn, d_ff, vocab_size, max_len, dropout, dropout_embed, route_type, noise, noise_step)
