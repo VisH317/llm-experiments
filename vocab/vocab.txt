@@ -98,10 +98,6 @@
 [unused96]
 [unused97]
 [unused98]
-[UNK]
-[CLS]
-[SEP]
-[MASK]
 [unused99]
 [unused100]
 [unused101]
@@ -997,6 +993,10 @@
 [unused991]
 [unused992]
 [unused993]
+[UNK]
+[CLS]
+[SEP]
+[MASK]
 !
 "
 #

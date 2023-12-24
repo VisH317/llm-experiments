@@ -7,11 +7,12 @@ from tqdm import tqdm
 from data import WikipediaData, Vocab, Task
 from modules import SparseTransformer
 from .prediction_head import TokenClassifier
+from transformers import BertTokenizer
 
 CFG_FILE = "train.cfg"
+VOCAB_FILE = "../vocab/vocab.txt"
 
-
-def train(cfg: str = CFG_FILE) -> tuple[SparseTransformer, list[float], list[float]]:
+def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE) -> tuple[SparseTransformer, list[float], list[float]]:
 
     # getting train config
     config = configparser.ConfigParser()
@@ -23,13 +24,15 @@ def train(cfg: str = CFG_FILE) -> tuple[SparseTransformer, list[float], list[flo
     n_epochs: int = int(config.get("train", "n_epochs"))
     lr: float = float(config.get("train", "lr"))
     val_step: int = int(config.get("train", "val_step"))
+    val_size: int = int(config.get("train", "val_size"))
+    max_ep_len: int = int(config.get("train", "max_ep_len"))
 
     d_model: int = int(config.get("transformer", "d_model"))
     max_len: int = int(config.get("vocab", "max_len"))
     vocab_size: int = int(config.get("vocab", "vocab_size"))
 
     # initializing modules
-    dataset = WikipediaData(batch_size)
+    dataset = WikipediaData(batch_size + val_size)
     vocab = Vocab.from_config(CFG_FILE)
     model = SparseTransformer.from_config(CFG_FILE).to(dtype=torch.float32)
 
@@ -63,10 +66,8 @@ def train(cfg: str = CFG_FILE) -> tuple[SparseTransformer, list[float], list[flo
 
         format_desc = lambda: f"Epoch {epoch}, Loss: {(epoch_running_losses[-1] if len(epoch_running_losses) > 0 else 0) if len(epoch_running_losses) <= 5 else sum(epoch_running_losses)/5}, Val: {(epoch_validation_losses[-1] if len(epoch_validation_losses) > 0 else 0) if len(epoch_validation_losses) <= 5 else sum(epoch_validation_losses)/5}"
 
-        for ix, data in tqdm(enumerate(loader), desc=format_desc(), total=len(dataset)):
-            # train_X, train_y, val_X, val_y = process_batch(data)
-            test_li = ["The quick brown fox jumps over the lazy"] * batch_size
-            train_X, train_y, val_X, val_y = process_batch(test_li)
+        for ix, data in tqdm(enumerate(loader), desc=format_desc(), total=max_ep_len): # use len(dataset for more robust)
+            train_X, train_y, val_X, val_y = process_batch(data)
 
             optim.zero_grad()
 
@@ -86,6 +87,8 @@ def train(cfg: str = CFG_FILE) -> tuple[SparseTransformer, list[float], list[flo
                     out = classifier(logits)
                     loss = loss_func(out, val_y)
                     epoch_validation_losses.append(loss)
+            
+            if ix >= max_ep_len: break
     
 
         losses.extend(epoch_running_losses)
