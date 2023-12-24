@@ -10,7 +10,7 @@ class RouteType(Enum):
 
 
 class SparseMultiHeadAttention(nn.Module):
-    def __init__(self, n_head: int, n_active: int, d_model: int, d_attn: int, route_type: str):
+    def __init__(self, n_head: int, n_active: int, d_model: int, d_attn: int, route_type: str, noise: float, noise_step: float):
         super(SparseMultiHeadAttention, self).__init__()
         self.n_head, self.n_active, self.d_model, self.d_attn = n_head, n_active, d_model, d_attn
 
@@ -23,17 +23,26 @@ class SparseMultiHeadAttention(nn.Module):
         self.key = nn.Linear(d_model, d_attn * n_head) # TODO: try with chunking and passing into each head this way, or try clusters
         self.value = nn.Linear(d_model, d_attn * n_head) # TODO: fix this to parallelize
 
+        self.noise = noise
+        self.noise_step = noise_step
+
         # self.head_in = [nn.Parameter(torch.zeros(d_model, d_attn * 3)) for _ in range(n_head)]
 
         self.router = nn.Linear(d_model, n_head) # need to experiment with pooling in this layer here (max pooling, sum pooling, or additive attention)
         self.w_O = nn.Linear(d_attn * n_active, d_model)
 
         self.softmax = nn.Softmax(-1)
+        self.router_softmax = nn.Softmax(1)
+        self.router_norm = nn.LayerNorm((n_head))
+        self.swish = nn.SiLU()
 
         self._reset_parameters()
 
     def _reset_parameters(self):
         nn.init.xavier_normal_(self.router.weight) # need to find a better weight init for this
+
+    def step_noise(self):
+        self.noise *= self.noise_step # TODO: test confidence sampling here later
 
     def forward(self, input: Tensor) -> Tensor:
         # input size: (batch_size, seq_len, d_model)
@@ -86,18 +95,24 @@ class SparseMultiHeadAttention(nn.Module):
 
     def route(self, input: Tensor) -> Tensor:
         if self.route_type == RouteType.sum:
-            out = self.router(input) # dim (batch, seq, n_head)
-            return torch.sum(out, 1).softmax(1)
+            out = torch.sum(self.router(input), 1) # dim (batch, seq, n_head)
+            return self.router_softmax(self.router_norm(out) + self.create_noise(out))
+        
         elif self.route_type == RouteType.mean:
-            out = self.router(input)
-            return torch.mean(out, 1).softmax(1)
+            out = torch.mean(self.router(input), 1) # dim (batch, seq, n_head)
+            return  self.router_softmax(self.router_norm(out) + self.create_noise(out))
+        
         elif self.route_type == RouteType.att:
             return self.att_router(input)
         else: raise TypeError("Route pooling type not recognized")
+
+    def create_noise(self, out: Tensor) -> Tensor:
+        return (torch.rand_like(out)) * (self.noise)
 
     def att_router(self, input: Tensor) -> Tensor:
         if self.route_type != RouteType.att: raise TypeError("Wrong routing type, attention called when not initialized")
         att: Tensor = self.att(input)
         att_weights = att.softmax(1)
         weighted = att_weights * input
-        return torch.sum(weighted, 1).softmax(1) # dim (batch_size, n_head)
+        summed = torch.sum(weighted, 1)
+        return self.router_softmax(self.router_norm(summed) + self.create_noise(summed)) # dim (batch_size, n_head)

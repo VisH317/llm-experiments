@@ -4,10 +4,10 @@ from .sparse_mha import SparseMultiHeadAttention, RouteType
 
 class SparseEncoder(nn.Module):
 
-    def __init__(self, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float, route_type: str):
+    def __init__(self, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float, route_type: str, noise: float, noise_step: float):
         super(SparseEncoder, self).__init__()
 
-        self.attn = SparseMultiHeadAttention(n_head, n_active, d_model, d_attn, route_type)
+        self.attn = SparseMultiHeadAttention(n_head, n_active, d_model, d_attn, route_type, noise, noise_step)
         
         self.ff = nn.Sequential(
             nn.Linear(d_model, d_ff),
@@ -25,16 +25,22 @@ class SparseEncoder(nn.Module):
         ff_out = self.ff(y)
         out = self.ln2(y + self.dropout(ff_out))
         return out
+    
+    def step_noise(self) -> None:
+        self.attn.step_noise()
 
 class SparseEncoderLayers(nn.Module):
 
-    def __init__(self, n_layers, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float = 0.1, route_type: str = "sum"):
+    def __init__(self, n_layers, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, dropout: float = 0.1, route_type: str = "sum", noise: float = 0.05, noise_step: float = 0.5):
         super(SparseEncoderLayers, self).__init__()
 
         self.layers = nn.Sequential(
-            *[SparseEncoder(d_model, n_head, n_active, d_attn, d_ff, dropout, route_type) for _ in range(n_layers)]
+            *[SparseEncoder(d_model, n_head, n_active, d_attn, d_ff, dropout, route_type, noise, noise_step) for _ in range(n_layers)]
         )
 
     def forward(self, input: Tensor) -> Tensor:
         return self.layers(input)
+    
+    def step_noise(self) -> None:
+        self.layers.step_noise()
 
