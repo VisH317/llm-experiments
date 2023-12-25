@@ -1,6 +1,14 @@
-from training.train import train
+from training.train import train, CFG_FILE, VOCAB_FILE
 import logging
 import sys
+
+# imports for kaggle
+from modules.pos_enc import PositionalEncoding
+from modules.sparse_encoder import SparseEncoder, SparseEncoderLayers, SparseMultiHeadAttention
+from modules.sparse_transformer import SparseTransformer
+
+from data.vocab import Vocab
+from data.data import WikipediaData
 
 if __name__ == "__main__":
     
