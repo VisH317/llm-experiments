@@ -47,6 +47,7 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
 
     # classifier
     classifier = TokenClassifier(d_model, max_len, vocab_size)
+    if cuda: classifier.cuda()
 
     # helper function to preprocess a batch (closure for the vocab object)
     def process_batch(data: list[str]):

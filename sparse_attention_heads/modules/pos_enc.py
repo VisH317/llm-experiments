@@ -18,7 +18,8 @@ class PositionalEncoding(nn.Module):
 
         self.encoding[:, 0::2] = torch.sin(pos / (10000 ** (_2i / d_model)))
         self.encoding[:, 1::2] = torch.cos(pos / (10000 ** (_2i / d_model)))
+        self.encoding.cuda()
 
     def forward(self, x):
         batch_size, seq_len, d_model = x.size()
-        return self.encoding[:seq_len, :].unsqueeze(0).expand(batch_size, *self.encoding.size())
+        return self.encoding[:seq_len, :].unsqueeze(0).expand(batch_size, *self.encoding.size()).cuda()
