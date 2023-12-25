@@ -6,5 +6,5 @@ def write_config(path: str, d: dict):
     config["transformer"] = d["transformer"]
     config["vocab"] = d["vocab"]
 
-    with open(path, "w") as f:
+    with open(path, "w+") as f:
         config.write(f)
