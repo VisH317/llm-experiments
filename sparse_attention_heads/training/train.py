@@ -12,7 +12,7 @@ from transformers import BertTokenizer
 CFG_FILE = "train.cfg"
 VOCAB_FILE = "../vocab/vocab.txt"
 
-def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True) -> tuple[SparseTransformer, list[float], list[float]]:
+def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab_stream: bool = True) -> tuple[SparseTransformer, list[float], list[float]]:
 
     # getting train config
     config = configparser.ConfigParser()

@@ -8,10 +8,19 @@ def collate(items: list[dict]):
     return [item["text"] for item in items]
 
 class WikipediaData:
-    def __init__(self, batch_size: int = 64, val_size: int = 4):
+    def __init__(self, batch_size: int = 64, val_size: int = 4, vocab_stream: bool = True):
         logger = logging.getLogger()
         logger.info("Loading dataset")
-        self.dataset: IterableDataset = load_dataset("wikipedia", "20220301.en", split="train", streaming=True)
+        if vocab_stream:
+            self.dataset: IterableDataset = load_dataset("wikipedia", "20220301.en", split="train", streaming=True)
+        else:
+            _ds = load_dataset('wikipedia', '20220301.en')
+            def _ds_gen():
+                for i in range(len(_ds)):
+                    yield _ds['train'][i]
+
+            self.dataset: IterableDataset = IterableDataset.from_generator(_ds_gen)
+
         logger.info("Dataset loaded!")
         self.batch_size = batch_size
         self.val_size = val_size
