@@ -1119,3 +1119,8 @@
 [INFO ]  set up vocab + parser (2023-12-23 23:29:01,267)
 [INFO ]  initializing sparse heads transformer (2023-12-23 23:29:01,283)
 [INFO ]  Loading epoch 0... (2023-12-23 23:29:03,235)
+[INFO ]  Loading dataset (2023-12-24 20:51:29,725)
+[INFO ]  Dataset loaded! (2023-12-24 20:51:30,777)
+[INFO ]  set up vocab + parser (2023-12-24 20:51:30,777)
+[INFO ]  initializing sparse heads transformer (2023-12-24 20:51:30,796)
+[INFO ]  Loading epoch 0... (2023-12-24 20:51:33,011)

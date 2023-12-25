@@ -12,7 +12,7 @@ from transformers import BertTokenizer
 CFG_FILE = "train.cfg"
 VOCAB_FILE = "../vocab/vocab.txt"
 
-def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE) -> tuple[SparseTransformer, list[float], list[float]]:
+def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True) -> tuple[SparseTransformer, list[float], list[float]]:
 
     # getting train config
     config = configparser.ConfigParser()
@@ -35,6 +35,8 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE) -> tuple[SparseTransform
     dataset = WikipediaData(batch_size + val_size)
     vocab = Vocab.from_config(CFG_FILE)
     model = SparseTransformer.from_config(CFG_FILE).to(dtype=torch.float32)
+    if cuda: model.cuda()
+
 
     # optim config
     optim = torch.optim.AdamW(model.parameters(), lr)
@@ -51,7 +53,10 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE) -> tuple[SparseTransform
         train_data, val_data = data[:batch_size], data[batch_size:]
         train_X, train_y = vocab.format_batch(train_data, task)
         val_X, val_y = vocab.format_batch(val_data, task)
-        return train_X, train_y, val_X, val_y
+        if not cuda: return train_X, train_y, val_X, val_y
+        else:
+            device = torch.device("cuda")
+            return train_X.to(device), train_y.to(device), val_X.to(device), val_y.to(device)
 
     losses: list[float] = []
     val_losses: list[float] = []
