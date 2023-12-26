@@ -113,13 +113,11 @@ class Vocab:
         y = new_seq[-1]
         new_seq.pop()
         pad_toks, l = self.pad_seq(new_seq)
-        print(pad_toks)
         return self.encode(pad_toks), self.one_hot(y)[0]
     
     def format_batch(self, items: list[str], task: Task) -> tuple[Tensor, Tensor]:
         X, y = torch.empty((len(items), self.max_len)), torch.empty((len(items)))
         # tokens = self.tokenizer(items)
-        # print(len(tokens.input_ids[0]))
         # return torch.tensor(self.tokenizer(items).input_ids)
 
         # return tokens

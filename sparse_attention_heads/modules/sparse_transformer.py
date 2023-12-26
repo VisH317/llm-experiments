@@ -2,7 +2,7 @@ import os
 import torch
 import configparser
 from torch import nn, Tensor, functional as F
-from modules.sparse_encoder import SparseEncoderLayers
+from modules.sparse_encoder import SparseEncoderLayers, SparseEncoder
 from modules.sparse_mha import RouteType
 from modules.pos_enc import PositionalEncoding
 import logging
@@ -18,7 +18,6 @@ class Preprocess(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input: Tensor) -> Tensor:
-        print("in: ", input[0], input.size())
         embed = self.embed(input)
         pos = self.pos_enc(embed)
         return self.dropout(embed + pos)
@@ -38,7 +37,12 @@ class SparseTransformer(nn.Module):
     
     def step_epoch(self) -> None:
         self.encoders.step_noise()
-    
+
+    def get_route_vals(self):
+        outs = []
+        for encoder in self.encoders.layers:
+            outs.append(encoder.attn.dist_out)
+        return outs
 
     @staticmethod
     def from_config(file_path: str):

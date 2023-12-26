@@ -36,6 +36,8 @@ class SparseMultiHeadAttention(nn.Module):
         self.router_norm = nn.LayerNorm((n_head))
         self.swish = nn.SiLU()
 
+        self.dist_out = []
+
         self._reset_parameters()
 
     def _reset_parameters(self):
@@ -48,6 +50,7 @@ class SparseMultiHeadAttention(nn.Module):
         # input size: (batch_size, seq_len, d_model)
         batch_size, seq_len, d_Model = input.size()
         dist = self.route(input) # returns dim (batch_size, n_heads)
+        self.dist_out.append(dist)
         # TODO: CONFIDENCE SAMPLING OR RANDOM NOISE TO SIMULATE TRYING OTHER HEADS, OR DIFFERENT INITIALIZATION
         sparse_dist_val = torch.topk(dist, self.n_active, -1) # returns dim (batch_size, n_active)
         sparse_dist_idx = sparse_dist_val.indices

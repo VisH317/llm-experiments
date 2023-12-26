@@ -81,7 +81,7 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
             out = classifier(logits)
 
             loss = loss_func(out, train_y)
-            epoch_running_losses.append(loss)
+            epoch_running_losses.append(loss.item())
 
             loss.backward()
             optim.step()
@@ -92,7 +92,7 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
                     logits = model(val_X)
                     out = classifier(logits)
                     loss = loss_func(out, val_y)
-                    epoch_validation_losses.append(loss)
+                    epoch_validation_losses.append(loss.item())
             
             if ix >= max_ep_len: break
     
@@ -100,7 +100,10 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
         losses.extend(epoch_running_losses)
         val_losses.extend(epoch_validation_losses)
         scheduler.step()
+        model.step_epoch() # step noise value
 
-    return model, losses, val_losses
+
+
+    return model, losses, val_losses, model.get_route_vals()
 
         
