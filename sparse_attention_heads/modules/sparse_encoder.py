@@ -51,5 +51,6 @@ class SparseEncoderLayers(nn.Module):
         return self.layers(input)
     
     def step_noise(self) -> None:
-        self.layers.step_noise()
+        for layer in self.layers:
+            layer.step_noise()
 
