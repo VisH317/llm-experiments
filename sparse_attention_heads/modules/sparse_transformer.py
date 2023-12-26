@@ -25,14 +25,14 @@ class Preprocess(nn.Module):
 
 class SparseTransformer(nn.Module):
 
-    def __init__(self, n_layers: int, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, vocab_size: int, max_len: int, dropout: float = 0.1, dropout_embed: float = 0.05, route_type: str = "sum", noise: float = 0.05, noise_step: float = 0.05, hidden_act: str = "relu"):
+    def __init__(self, n_layers: int, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, vocab_size: int, max_len: int, dropout: float = 0.1, dropout_embed: float = 0.05, route_type: str = "sum", noise: float = 0.05, noise_step: float = 0.05, hidden_act: str = "relu", dtype: torch.dtype = torch.float32):
         super(SparseTransformer, self).__init__()
         self.pre = Preprocess(vocab_size, d_model, max_len, dropout_embed)
         self.encoders = SparseEncoderLayers(n_layers, d_model, n_head, n_active, d_attn, d_ff, dropout, route_type, noise, noise_step, hidden_act)
-
+        self.dtype = dtype
 
     def forward(self, input: Tensor) -> Tensor:
-        pre = self.pre(input)
+        pre = self.pre(input).to(dtype=self.dtype)
         return self.encoders(pre)
     
     def step_epoch(self) -> None:
@@ -45,7 +45,7 @@ class SparseTransformer(nn.Module):
         return outs
 
     @staticmethod
-    def from_config(file_path: str):
+    def from_config(file_path: str, dtype: torch.dtype):
         config = configparser.ConfigParser()
         abs_path = os.path.join(os.getcwd(), file_path)
         config.read(abs_path)
@@ -71,4 +71,4 @@ class SparseTransformer(nn.Module):
 
         logging.getLogger().info("initializing sparse heads transformer")
     
-        return SparseTransformer(n_layers, d_model, n_head, n_active, d_attn, d_ff, vocab_size, max_len, dropout, dropout_embed, route_type, noise, noise_step, hidden_act)
+        return SparseTransformer(n_layers, d_model, n_head, n_active, d_attn, d_ff, vocab_size, max_len, dropout, dropout_embed, route_type, noise, noise_step, hidden_act, dtype)

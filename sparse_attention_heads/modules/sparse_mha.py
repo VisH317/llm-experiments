@@ -48,7 +48,7 @@ class SparseMultiHeadAttention(nn.Module):
 
     def forward(self, input: Tensor) -> Tensor:
         # input size: (batch_size, seq_len, d_model)
-        batch_size, seq_len, d_Model = input.size()
+        batch_size, seq_len, d_model = input.size()
         dist = self.route(input) # returns dim (batch_size, n_heads)
         self.dist_out.append(dist)
         # TODO: CONFIDENCE SAMPLING OR RANDOM NOISE TO SIMULATE TRYING OTHER HEADS, OR DIFFERENT INITIALIZATION
@@ -108,7 +108,7 @@ class SparseMultiHeadAttention(nn.Module):
         else: raise TypeError("Route pooling type not recognized")
 
     def create_noise(self, out: Tensor) -> Tensor:
-        return (torch.rand_like(out)) * (self.noise)
+        return ((torch.rand_like(out)) * (self.noise))
 
     def att_router(self, input: Tensor) -> Tensor:
         if self.route_type != RouteType.att: raise TypeError("Wrong routing type, attention called when not initialized")

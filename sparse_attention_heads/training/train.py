@@ -12,7 +12,7 @@ from transformers import BertTokenizer
 CFG_FILE = "train.cfg"
 VOCAB_FILE = "../vocab/vocab.txt"
 
-def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab_stream: bool = True) -> tuple[SparseTransformer, list[float], list[float]]:
+def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab_stream: bool = True, dtype: torch.dtype = torch.float32) -> tuple[SparseTransformer, list[float], list[float]]:
 
     # getting train config
     config = configparser.ConfigParser()
@@ -34,7 +34,7 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
     # initializing modules
     dataset = WikipediaData(batch_size + val_size, vocab_stream)
     vocab = Vocab.from_config(cfg)
-    model = SparseTransformer.from_config(cfg).to(dtype=torch.float32)
+    model = SparseTransformer.from_config(cfg, dtype).to(dtype=dtype)
     if cuda: model.cuda()
 
 
@@ -46,7 +46,7 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
     loss_func = nn.CrossEntropyLoss()
 
     # classifier
-    classifier = TokenClassifier(d_model, max_len, vocab_size)
+    classifier = TokenClassifier(d_model, max_len, vocab_size).to(dtype=dtype)
     if cuda: classifier.cuda()
 
     # helper function to preprocess a batch (closure for the vocab object)
@@ -80,10 +80,10 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
             logits = model(train_X)
             out = classifier(logits)
 
-            loss = loss_func(out, train_y)
+            loss = loss_func(out, train_y).to(dtype=dtype)
             epoch_running_losses.append(loss.item())
-
-            loss.backward()
+            
+            loss.backward(retain_graph=False)
             optim.step()
 
             # validation loop

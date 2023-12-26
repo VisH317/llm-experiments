@@ -1,6 +1,7 @@
 from training.train import train, CFG_FILE, VOCAB_FILE
 import logging
 import sys
+import torch
 
 # imports for kaggle
 from modules.pos_enc import PositionalEncoding
@@ -25,4 +26,4 @@ if __name__ == "__main__":
 
     rootLogger.setLevel(logging.INFO)
 
-    train(CFG_FILE, VOCAB_FILE, True, False)
+    train(CFG_FILE, VOCAB_FILE, True, False, torch.float16)
