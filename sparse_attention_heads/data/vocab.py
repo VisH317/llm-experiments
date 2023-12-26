@@ -63,10 +63,10 @@ class Vocab:
     def pad_seq(self, item: list[str], take_last: bool = False) -> tuple[list[str], int]:
         l = len(item)
 
-        if len(item) < 64:
-            item += [self.pad] * (64-l)
+        if len(item) < self.max_len:
+            item += [self.pad] * (self.max_len-l)
         
-        return (item[:64] if not take_last else item[-64:]), l
+        return (item[:self.max_len] if not take_last else item[-self.max_len:]), l
     
 
     def encode(self, item: list[str]) -> Tensor:
@@ -113,6 +113,7 @@ class Vocab:
         y = new_seq[-1]
         new_seq.pop()
         pad_toks, l = self.pad_seq(new_seq)
+        print(pad_toks)
         return self.encode(pad_toks), self.one_hot(y)[0]
     
     def format_batch(self, items: list[str], task: Task) -> tuple[Tensor, Tensor]:

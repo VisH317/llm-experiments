@@ -22,4 +22,4 @@ class PositionalEncoding(nn.Module):
 
     def forward(self, x):
         batch_size, seq_len, d_model = x.size()
-        return self.encoding[:seq_len, :].unsqueeze(0).expand(batch_size, *self.encoding.size()).cuda()
+        return self.encoding[:seq_len, :].unsqueeze(0).expand(batch_size, *self.encoding.size())

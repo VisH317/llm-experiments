@@ -25,4 +25,4 @@ if __name__ == "__main__":
 
     rootLogger.setLevel(logging.INFO)
 
-    train(CFG_FILE, VOCAB_FILE, True, False)
+    train(CFG_FILE, VOCAB_FILE, False, False)

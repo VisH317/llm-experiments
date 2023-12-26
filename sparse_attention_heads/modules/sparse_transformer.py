@@ -13,10 +13,12 @@ class Preprocess(nn.Module):
     def __init__(self, n_vocab: int, d_model: int, max_len: int, dropout: float = 0.05):
         super(Preprocess, self).__init__()
         self.embed = nn.Embedding(n_vocab, d_model).to(dtype=torch.float16)
+        self.n_vocab, self.d_model = n_vocab, d_model
         self.pos_enc = PositionalEncoding(d_model, max_len)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input: Tensor) -> Tensor:
+        print("in: ", input[0], input.size())
         embed = self.embed(input)
         pos = self.pos_enc(embed)
         return self.dropout(embed + pos)
