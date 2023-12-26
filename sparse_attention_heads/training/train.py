@@ -33,8 +33,8 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
 
     # initializing modules
     dataset = WikipediaData(batch_size + val_size, vocab_stream)
-    vocab = Vocab.from_config(CFG_FILE)
-    model = SparseTransformer.from_config(CFG_FILE).to(dtype=torch.float32)
+    vocab = Vocab.from_config(cfg)
+    model = SparseTransformer.from_config(cfg).to(dtype=torch.float32)
     if cuda: model.cuda()
 
 
