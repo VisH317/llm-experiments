@@ -8,11 +8,12 @@ from modules.pos_enc import PositionalEncoding
 import logging
 
 
+
 class Preprocess(nn.Module):
 
-    def __init__(self, n_vocab: int, d_model: int, max_len: int, dropout: float = 0.05):
+    def __init__(self, n_vocab: int, d_model: int, max_len: int, dropout: float = 0.05, dtype: torch.dtype = torch.float32):
         super(Preprocess, self).__init__()
-        self.embed = nn.Embedding(n_vocab, d_model).to(dtype=torch.float16)
+        self.embed = nn.Embedding(n_vocab, d_model).to(dtype=dtype)
         self.n_vocab, self.d_model = n_vocab, d_model
         self.pos_enc = PositionalEncoding(d_model, max_len)
         self.dropout = nn.Dropout(dropout)
@@ -27,13 +28,16 @@ class SparseTransformer(nn.Module):
 
     def __init__(self, n_layers: int, d_model: int, n_head: int, n_active: int, d_attn: int, d_ff: int, vocab_size: int, max_len: int, dropout: float = 0.1, dropout_embed: float = 0.05, route_type: str = "sum", noise: float = 0.05, noise_step: float = 0.05, hidden_act: str = "relu", dtype: torch.dtype = torch.float32):
         super(SparseTransformer, self).__init__()
-        self.pre = Preprocess(vocab_size, d_model, max_len, dropout_embed)
+        self.quant = torch.quantization.QuantStub()
+        self.dequant = torch.quantization.DeQuantStub()
+        self.pre = Preprocess(vocab_size, d_model, max_len, dropout_embed, dtype)
         self.encoders = SparseEncoderLayers(n_layers, d_model, n_head, n_active, d_attn, d_ff, dropout, route_type, noise, noise_step, hidden_act)
         self.dtype = dtype
 
     def forward(self, input: Tensor) -> Tensor:
         pre = self.pre(input).to(dtype=self.dtype)
-        return self.encoders(pre)
+        pre = self.quant(pre)
+        return self.dequant(self.encoders(pre))
     
     def step_epoch(self) -> None:
         self.encoders.step_noise()

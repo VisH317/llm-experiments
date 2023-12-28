@@ -8,6 +8,7 @@ from data import WikipediaData, Vocab, Task
 from modules import SparseTransformer
 from .prediction_head import TokenClassifier
 from transformers import BertTokenizer
+from pytorch_quantization import quant_modules
 
 CFG_FILE = "train.cfg"
 VOCAB_FILE = "../vocab/vocab.txt"
@@ -37,6 +38,11 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
     model = SparseTransformer.from_config(cfg, dtype).to(dtype=dtype)
     if cuda: model.cuda()
 
+    # calibrating model
+    for name, module in model.named_modules()
+
+    model.qconfig = torch.quantization.get_default_qconfig("fbgemm")
+    torch.quantization.prepare_qat(model, inplace=True)
 
     # optim config
     optim = torch.optim.AdamW(model.parameters(), lr)
@@ -80,7 +86,7 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
             logits = model(train_X)
             out = classifier(logits)
 
-            loss = loss_func(out, train_y).to(dtype=dtype)
+            loss = loss_func(out.float(), train_y).to(dtype=dtype)
             epoch_running_losses.append(loss.item())
             
             loss.backward(retain_graph=False)
@@ -91,7 +97,7 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
                 with torch.no_grad():
                     logits = model(val_X)
                     out = classifier(logits)
-                    loss = loss_func(out, val_y)
+                    loss = loss_func(out.float(), val_y)
                     epoch_validation_losses.append(loss.item())
             
             if ix >= max_ep_len: break
