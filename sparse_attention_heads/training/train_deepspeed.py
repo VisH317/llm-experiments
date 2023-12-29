@@ -19,11 +19,13 @@ DS_FILE = "ds_config.json"
 
 class DeepspeedModel(nn.Module):
 
-    def __init__(self, trans: SparseTransformer, classifier: nn.Sequential, loss):
+    def __init__(self, cfg: str, dtype: torch.dtype, classifier: nn.Sequential, cuda: bool = True):
         super().__init__()
 
-        self.transformer = trans
+        self.transformer = SparseTransformer.from_config(cfg, dtype).to(dtype=dtype)
+        if cuda: self.transformer.cuda()
         self.classifier = classifier
+        if cuda: self.classifier.cuda()
 
         self.loss = nn.CrossEntropyLoss()
     
@@ -56,17 +58,14 @@ def train_deepspeed(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, ds: str = DS_F
     # initializing modules
     dataset = WikipediaData(batch_size + val_size, vocab_stream)
     vocab = Vocab.from_config(cfg)
-    transformer = SparseTransformer.from_config(cfg, dtype).to(dtype=dtype)
-    if cuda: transformer.cuda()
-
-    # loss config
-    loss_func = nn.CrossEntropyLoss()
+    # transformer = SparseTransformer.from_config(cfg, dtype).to(dtype=dtype)
+    # if cuda: transformer.cuda()
 
     # classifier
     classifier = TokenClassifier(d_model, max_len, vocab_size).to(dtype=dtype)
     if cuda: classifier.cuda()
 
-    model = DeepspeedModel(transformer, classifier, loss_func)
+    model = DeepspeedModel(cfg, dtype, classifier, cuda)
 
     model_engine, optim, _, _ = deepspeed.initialize(model=model, model_parameters=model.parameters(), config=ds)
 
