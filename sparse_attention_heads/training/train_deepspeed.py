@@ -31,9 +31,9 @@ ds_config = {
     "fp16": {
         "enabled": True
     },
-    "zero_optimization": {
-        "stage": 1
-    }
+    # "zero_optimization": {
+    #     "stage": 1
+    # }
 }
 
 args = argparse.Namespace()
@@ -101,7 +101,7 @@ def train_deepspeed(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, ds: str = DS_F
 
     params = list(model.named_parameters())
     params = [p for n, p in params]
-    model_engine, optim, _, _ = deepspeed.initialize(args=args, model=nn.DataParallel(model), model_parameters=params, config=ds)
+    model_engine, optim, _, _ = deepspeed.initialize(args=args, model=nn.DataParallel(model), model_parameters=params, config=ds_config)
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma=0.8)
 
