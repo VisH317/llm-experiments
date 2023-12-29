@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-torch = "^2.0.0"
+torch = "1.9.0"
 torch-geometric = "*"
 fast-pytorch-kmeans = "*"
 sentence-transformers = "*"
@@ -15,6 +15,7 @@ datasets = "*"
 apache_beam = "*"
 mwparserfromhell = "*"
 transformers = "*"
+deepspeed = "*"
 
 
 [build-system]

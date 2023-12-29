@@ -8,14 +8,33 @@ from data import WikipediaData, Vocab, Task
 from modules import SparseTransformer
 from .prediction_head import TokenClassifier
 from transformers import BertTokenizer
+import deepspeed
 # from pytorch_quantization import quant_modules
 # import pytorch_quantization.nn as quant_nn
 # from .quantization import collect_quant_stats, compute_quant_amax
 
 CFG_FILE = "train.cfg"
 VOCAB_FILE = "../vocab/vocab.txt"
+DS_FILE = "ds_config.json"
 
-def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab_stream: bool = True, dtype: torch.dtype = torch.float32) -> tuple[SparseTransformer, list[float], list[float]]:
+class DeepspeedModel(nn.Module):
+
+    def __init__(self, trans: SparseTransformer, classifier: nn.Sequential, loss):
+        super().__init__()
+
+        self.transformer = trans
+        self.classifier = classifier
+
+        self.loss = nn.CrossEntropyLoss()
+    
+    def forward(self, train_X, train_y):
+        logits = self.transformer(train_X)
+        out = self.classifier(logits)
+
+        return self.loss(out, train_y)
+
+
+def train_deepspeed(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, ds: str = DS_FILE, cuda: bool = True, vocab_stream: bool = True, dtype: torch.dtype = torch.float32) -> tuple[SparseTransformer, list[float], list[float]]:
 
     # getting train config
     config = configparser.ConfigParser()
@@ -37,18 +56,8 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
     # initializing modules
     dataset = WikipediaData(batch_size + val_size, vocab_stream)
     vocab = Vocab.from_config(cfg)
-    model = SparseTransformer.from_config(cfg, dtype).to(dtype=dtype)
-    if cuda: model.cuda()
-
-    # quantize model
-    # with torch.no_grad():
-    #     loader = dataset.get_epoch()
-    #     collect_quant_stats(model, loader, num_batches=2)
-    #     compute_quant_amax(model, method="percentile", percentile=99.99)
-
-    # optim config
-    optim = torch.optim.AdamW(model.parameters(), lr)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma=0.8)
+    transformer = SparseTransformer.from_config(cfg, dtype).to(dtype=dtype)
+    if cuda: transformer.cuda()
 
     # loss config
     loss_func = nn.CrossEntropyLoss()
@@ -56,6 +65,13 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
     # classifier
     classifier = TokenClassifier(d_model, max_len, vocab_size).to(dtype=dtype)
     if cuda: classifier.cuda()
+
+    model = DeepspeedModel(transformer, classifier, loss_func)
+
+    model_engine, optim, _, _ = deepspeed.initialize(model=model, model_parameters=model.parameters(), config=ds)
+
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma=0.8)
+
 
     # helper function to preprocess a batch (closure for the vocab object)
     def process_batch(data: list[str]):
@@ -83,16 +99,13 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
         for ix, data in tqdm(enumerate(loader), desc=format_desc(), total=max_ep_len): # use len(dataset for more robust)
             train_X, train_y, val_X, val_y = process_batch(data)
 
-            optim.zero_grad()
+            # optim.zero_grad()
 
-            logits = model(train_X)
-            out = classifier(logits)
-
-            loss = loss_func(out.float(), train_y).to(dtype=dtype)
+            loss = model_engine(train_X, train_y)
             epoch_running_losses.append(loss.item())
             
-            loss.backward(retain_graph=False)
-            optim.step()
+            model_engine.backward(loss)
+            model_engine.step()
 
             # validation loop
             if ix % val_step:
