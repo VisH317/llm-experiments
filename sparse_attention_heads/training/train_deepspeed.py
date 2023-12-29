@@ -71,6 +71,7 @@ def train_deepspeed(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, ds: str = DS_F
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma=0.8)
 
+    loss_func = nn.CrossEntropyLoss()
 
     # helper function to preprocess a batch (closure for the vocab object)
     def process_batch(data: list[str]):
