@@ -66,8 +66,13 @@ def train_deepspeed(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, ds: str = DS_F
     if cuda: classifier.cuda()
 
     model = DeepspeedModel(cfg, dtype, classifier, cuda)
+    model = nn.DataParallel(model)
 
-    model_engine, optim, _, _ = deepspeed.initialize(model=model, model_parameters=model.parameters(), config=ds)
+    print(torch.cuda.memory_summary())
+
+    params = list(model.named_parameters())
+    params = [p for n, p in params]
+    model_engine, optim, _, _ = deepspeed.initialize(model=model, model_parameters=params, config=ds)
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma=0.8)
 
