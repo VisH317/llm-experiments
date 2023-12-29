@@ -68,6 +68,8 @@ def train_deepspeed(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, ds: str = DS_F
     model = DeepspeedModel(cfg, dtype, classifier, cuda)
     model = nn.DataParallel(model)
 
+    torch.cuda.empty_cache()
+
     print(torch.cuda.memory_summary())
 
     params = list(model.named_parameters())
