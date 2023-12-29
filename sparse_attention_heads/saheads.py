@@ -26,4 +26,4 @@ if __name__ == "__main__":
 
     rootLogger.setLevel(logging.INFO)
 
-    train(CFG_FILE, VOCAB_FILE, True, False, torch.bfloat16)
+    train(CFG_FILE, VOCAB_FILE, True, False, torch.float16)
