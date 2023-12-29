@@ -11,7 +11,6 @@ from modules.sparse_transformer import SparseTransformer
 from data.vocab import Vocab
 from data.data import WikipediaData
 
-    
 logFormatter = logging.Formatter("[%(levelname)-5.5s]  %(message)s (%(asctime)s)")
 rootLogger = logging.getLogger()
 
