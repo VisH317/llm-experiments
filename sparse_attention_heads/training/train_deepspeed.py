@@ -9,6 +9,7 @@ from modules import SparseTransformer
 from .prediction_head import TokenClassifier
 from transformers import BertTokenizer
 import deepspeed
+import subprocess
 # from pytorch_quantization import quant_modules
 # import pytorch_quantization.nn as quant_nn
 # from .quantization import collect_quant_stats, compute_quant_amax
@@ -66,16 +67,19 @@ def train_deepspeed(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, ds: str = DS_F
     if cuda: classifier.cuda()
 
     model = DeepspeedModel(cfg, dtype, classifier, cuda)
-    model = nn.DataParallel(model)
 
     torch.cuda.empty_cache()
     torch.cuda.synchronize()
 
     print(torch.cuda.memory_summary())
 
+    process = subprocess.run(["nvidia-smi"])
+
+    print(process.stdout)
+
     params = list(model.named_parameters())
     params = [p for n, p in params]
-    model_engine, optim, _, _ = deepspeed.initialize(model=model, model_parameters=params, config=ds)
+    model_engine, optim, _, _ = deepspeed.initialize(model=nn.DataParallel(model), model_parameters=params, config=ds)
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma=0.8)
 
