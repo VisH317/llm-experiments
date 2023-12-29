@@ -10,6 +10,7 @@ from .prediction_head import TokenClassifier
 from transformers import BertTokenizer
 import deepspeed
 import subprocess
+import argparse
 # from pytorch_quantization import quant_modules
 # import pytorch_quantization.nn as quant_nn
 # from .quantization import collect_quant_stats, compute_quant_amax
@@ -17,6 +18,27 @@ import subprocess
 CFG_FILE = "train.cfg"
 VOCAB_FILE = "../vocab/vocab.txt"
 DS_FILE = "ds_config.json"
+
+ds_config = {
+    "train_batch_size": 16,
+    "gradient_accumulation_steps": 1,
+    "optimizer": {
+        "type": "Adam",
+        "params": {
+            "lr": 0.0001
+        }
+    },
+    "fp16": {
+        "enabled": True
+    },
+    "zero_optimization": {
+        "stage": 1
+    }
+}
+
+args = argparse.Namespace()
+args.num_gpus = 2
+args.cuda = True
 
 class DeepspeedModel(nn.Module):
 
@@ -79,7 +101,7 @@ def train_deepspeed(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, ds: str = DS_F
 
     params = list(model.named_parameters())
     params = [p for n, p in params]
-    model_engine, optim, _, _ = deepspeed.initialize(model=nn.DataParallel(model), model_parameters=params, config=ds)
+    model_engine, optim, _, _ = deepspeed.initialize(args=args, model=nn.DataParallel(model), model_parameters=params, config=ds)
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma=0.8)
 
