@@ -20,20 +20,45 @@ VOCAB_FILE = "../vocab/vocab.txt"
 DS_FILE = "ds_config.json"
 
 ds_config = {
-    "train_batch_size": 16,
-    "gradient_accumulation_steps": 1,
-    "optimizer": {
-        "type": "Adam",
-        "params": {
-            "lr": 0.0001
-        }
-    },
-    "fp16": {
-        "enabled": True
-    },
-    # "zero_optimization": {
-    #     "stage": 1
-    # }
+  "train_batch_size": 16,
+  "steps_per_print": 2000,
+  "optimizer": {
+    "type": "Adam",
+    "params": {
+      "lr": 0.0001,
+      "betas": [
+        0.8,
+        0.999
+      ],
+      "eps": 1e-8,
+      "weight_decay": 3e-7
+    }
+  },
+  "gradient_clipping": 1.0,
+  "prescale_gradients": False,
+  "bf16": {
+      "enabled": False
+  },
+  "fp16": {
+      "enabled": True,
+      "fp16_master_weights_and_grads": False,
+      "loss_scale": 0,
+      "loss_scale_window": 500,
+      "hysteresis": 2,
+      "min_loss_scale": 1,
+      "initial_scale_power": 15
+  },
+  "wall_clock_breakdown": False,
+  "zero_optimization": {
+      "stage": 3,
+      "allgather_partitions": True,
+      "reduce_scatter": True,
+      "allgather_bucket_size": 50000000,
+      "reduce_bucket_size": 50000000,
+      "overlap_comm": True,
+      "contiguous_gradients": True,
+      "cpu_offload": True
+  }
 }
 
 args = argparse.Namespace()
@@ -92,8 +117,6 @@ def train_deepspeed(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, ds: str = DS_F
 
     torch.cuda.empty_cache()
     torch.cuda.synchronize()
-
-    print(torch.cuda.memory_summary())
 
     process = subprocess.run(["nvidia-smi"])
 
@@ -155,7 +178,7 @@ def train_deepspeed(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, ds: str = DS_F
         losses.extend(epoch_running_losses)
         val_losses.extend(epoch_validation_losses)
         scheduler.step()
-        model.step_epoch() # step noise value
+        model_engine.step_epoch() # step noise value
 
 
 
