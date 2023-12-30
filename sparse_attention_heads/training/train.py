@@ -40,7 +40,7 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
     vocab = Vocab.from_config(cfg)
     model = SparseTransformer.from_config(cfg, dtype).to(dtype=dtype)
     if cuda: model.cuda()
-    model = nn.DataParallel(model)
+    model = nn.DataParallel(model, device_ids=list(range(2)))
 
     # quantize model
     # with torch.no_grad():
