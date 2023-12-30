@@ -91,6 +91,10 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
 
             optim.zero_grad()
 
+            torch.cuda.synchronize()
+            process = subprocess.run(["nvidia-smi"])
+            print(process.stdout)
+
             logits = model(train_X)
             out = classifier(logits)
 
