@@ -8,6 +8,7 @@ from data import WikipediaData, Vocab, Task
 from modules import SparseTransformer
 from .prediction_head import TokenClassifier
 from transformers import BertTokenizer
+import subprocess
 # from pytorch_quantization import quant_modules
 # import pytorch_quantization.nn as quant_nn
 # from .quantization import collect_quant_stats, compute_quant_amax
@@ -57,6 +58,10 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
     # classifier
     classifier = TokenClassifier(d_model, max_len, vocab_size).to(dtype=dtype)
     if cuda: classifier.cuda()
+
+    torch.cuda.synchronize()
+    process = subprocess.run(["nvidia-smi"])
+    print(process.stdout)
 
     # helper function to preprocess a batch (closure for the vocab object)
     def process_batch(data: list[str]):
