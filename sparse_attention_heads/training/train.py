@@ -74,7 +74,7 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
     for epoch in range(n_epochs):
         logging.getLogger().info(f"Loading epoch {epoch}...")
 
-        if epoch != 0: loader = dataset.get_epoch()
+        loader = dataset.get_epoch()
 
         epoch_running_losses = []
         epoch_validation_losses = []
