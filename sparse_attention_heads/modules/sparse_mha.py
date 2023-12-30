@@ -1,6 +1,7 @@
 import torch
 from torch import nn, Tensor, functional as F
 from enum import Enum
+# from flash_attn.flash_attention import flash_attn_unpadded_qkvpacked_func
 
 class RouteType(Enum):
     sum = "sum"
@@ -35,6 +36,8 @@ class SparseMultiHeadAttention(nn.Module):
         self.router_softmax = nn.Softmax(1)
         self.router_norm = nn.LayerNorm((n_head))
         self.swish = nn.SiLU()
+
+        self.dropout = 0.05
 
         self.dist_out = []
 
@@ -71,6 +74,7 @@ class SparseMultiHeadAttention(nn.Module):
         V = V_unfiltered[sparse_dist != -1].reshape(batch_size, self.n_active, seq_len, self.d_attn)
 
         # each batch has its own conditional
+        # O = flash_attn_func(Q, K, V, dropout_p=self.dropout)
         O = self.scaled_dot_product_attention(Q, K, V)
         O_gated = dist_dense * O
         O_final = O_gated.permute(0, 2, 1, 3).reshape(batch_size, seq_len, self.n_active * self.d_attn) # batch_size, n_active, seq_len, d_attn
@@ -89,7 +93,7 @@ class SparseMultiHeadAttention(nn.Module):
 
         QK = torch.matmul(Q, K_T)
         QK_scaled = QK / (d_attn ** 0.5)
-        score = self.softmax(QK_scaled)
+        score = self.softmax(QK_scaled)  # TODO: test MQA and GQA
 
         return torch.matmul(score, V)
 

@@ -40,7 +40,8 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
     vocab = Vocab.from_config(cfg)
     model = SparseTransformer.from_config(cfg, dtype).to(dtype=dtype)
     if cuda: model.cuda()
-    model = nn.DataParallel(model, device_ids=list(range(2)))
+    dev_count = torch.cuda.device_count()
+    model = nn.DataParallel(model, device_ids=list(range(dev_count)))
 
     # quantize model
     # with torch.no_grad():
@@ -91,9 +92,9 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
 
             optim.zero_grad()
 
-            torch.cuda.synchronize()
-            process = subprocess.run(["nvidia-smi"])
-            print(process.stdout)
+                # torch.cuda.synchronize()
+                # process = subprocess.run(["nvidia-smi"])
+                # print(process.stdout)
 
             logits = model(train_X)
             out = classifier(logits)
