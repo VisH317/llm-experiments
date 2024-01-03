@@ -119,7 +119,7 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
         losses.extend(epoch_running_losses)
         val_losses.extend(epoch_validation_losses)
         scheduler.step()
-        model.step_epoch() # step noise value
+        model.module.step_epoch() # step noise value
 
 
 
