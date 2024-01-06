@@ -123,6 +123,6 @@ def train(cfg: str = CFG_FILE, vocab: str = VOCAB_FILE, cuda: bool = True, vocab
 
 
 
-    return model, losses, val_losses, model.get_route_vals()
+    return model, losses, val_losses, model.module.get_route_vals()
 
         
