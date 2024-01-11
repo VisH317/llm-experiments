@@ -9,7 +9,7 @@ class TokenClassifier(nn.Module):
         super(TokenClassifier, self).__init__()
         self.seq = nn.Sequential(
             nn.Linear(max_len * d_model, vocab_size),
-            nn.Softmax(0)
+            nn.Softmax(1)
         )
 
     def forward(self, input: Tensor) -> Tensor:

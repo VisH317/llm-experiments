@@ -43,6 +43,8 @@ class SparseMultiHeadAttention(nn.Module):
 
         self._reset_parameters()
 
+        self.last_dist = None
+
     def _reset_parameters(self):
         nn.init.xavier_normal_(self.router.weight) # need to find a better weight init for this
 
@@ -80,10 +82,15 @@ class SparseMultiHeadAttention(nn.Module):
         O_final = O_gated.permute(0, 2, 1, 3).reshape(batch_size, seq_len, self.n_active * self.d_attn) # batch_size, n_active, seq_len, d_attn
         # TODO: experiment with the output layer and see if it can generalize to sparse (prob not, so try separate Os instead later)
         Z = self.w_O(O_final) # batch_size, seq_len, d_attn
+        
+        self.last_dist = dist
 
         return Z
 
     # router functions
+
+    def get_last_dist(self): return self.last_dist
+
 
     def scaled_dot_product_attention(self, Q: Tensor, K: Tensor, V: Tensor) -> Tensor:
 

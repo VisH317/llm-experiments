@@ -22,6 +22,8 @@ class Vocab:
         self.vocab_size, self.max_len, self.num_unk = vocab_size, max_len, num_unk
         self.pad, self.start, self.end, self.mask, self.unk = pad, start, end, mask, unk
 
+        self.file_path = file_path
+
         self.current_unused = 0
 
         self.special = ["!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", ".", "-", "/"]
@@ -58,6 +60,12 @@ class Vocab:
         item = item.translate(self.table)
 
         return [tok for tok in item.split(" ") if len(tok) > 0]
+    
+    def get_word(self, idx: int) -> str:
+        return self.vocab[idx]
+    
+    def get_idx(self, word: str) -> int:
+        return self.vocab.index(word)
 
 
     def pad_seq(self, item: list[str], take_last: bool = False) -> tuple[list[str], int]:
@@ -101,6 +109,7 @@ class Vocab:
     
     def format_clm(self, item: str) -> tuple[Tensor, Tensor]:
         toks = self.tokenizer.tokenize(item)
+        print(toks)
         y = toks[-1]
         toks[-1] = self.mask
         pad_toks, l = self.pad_seq(toks)

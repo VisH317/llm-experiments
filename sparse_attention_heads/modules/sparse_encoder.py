@@ -30,6 +30,8 @@ class SparseEncoder(nn.Module):
     def step_noise(self) -> None:
         self.attn.step_noise()
 
+    def get_last_dist(self) -> Tensor: return self.attn.get_last_dist()
+
     def get_activation(hidden_act: str):
         if hidden_act == "silu": return nn.SiLU()
         elif hidden_act == "elu": return nn.ELU()
@@ -49,6 +51,10 @@ class SparseEncoderLayers(nn.Module):
 
     def forward(self, input: Tensor) -> Tensor:
         return self.layers(input)
+    
+    def get_last_dist(self) -> Tensor:
+        dists = [layer.get_last_dist() for layer in self.layers]
+        return torch.stack(dists)
     
     def step_noise(self) -> None:
         for layer in self.layers:
